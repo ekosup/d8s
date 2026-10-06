@@ -75,12 +75,17 @@ func (a *App) openLogs(res resource.Resource, view *tableView) {
 		runeBinding('s', "s", "Autoscroll", lv.toggleFollow),
 		runeBinding('t', "t", "Timestamps", lv.toggleStamps),
 	}
+	// Six range keys would crowd the header; one summary entry stands in
+	// for them there, and help lists each.
+	keys = append(keys, binding{label: "0-5", desc: "Range"})
 	for _, r := range logRanges {
 		desc := "Last " + r.label
 		if r.since == 0 {
 			desc = fmt.Sprintf("Last %d lines", defaultLogTail)
 		}
-		keys = append(keys, runeBinding(r.key, string(r.key), desc, func() { lv.start(r.since) }))
+		b := runeBinding(r.key, string(r.key), desc, func() { lv.start(r.since) })
+		b.noHint = true
+		keys = append(keys, b)
 	}
 	a.pushPager("logs", lv.pager, lv.stop, keys...)
 	lv.start(0)

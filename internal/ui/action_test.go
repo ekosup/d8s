@@ -113,10 +113,10 @@ func TestActionWithNoRows(t *testing.T) {
 
 func TestHeaderShowsViewActions(t *testing.T) {
 	h := actionHarness(t)
-	line := render(t, h.app.root, 140, 24)[2]
-	for _, want := range []string{"<r> restart", "<x> stop", "<ctrl-d> delete", "<ctrl-k> kill"} {
-		if !strings.Contains(line, want) {
-			t.Fatalf("missing %q in %q", want, line)
+	lines := headerLines(t, h.app, 140)
+	for _, want := range [][2]string{{"r", "Restart"}, {"x", "Stop"}, {"ctrl-d", "Delete"}, {"ctrl-k", "Kill"}} {
+		if row, _ := hintAt(lines, want[0], want[1]); row < 0 {
+			t.Fatalf("missing <%s> %s in:\n%s", want[0], want[1], strings.Join(lines, "\n"))
 		}
 	}
 	// Help lists them too.

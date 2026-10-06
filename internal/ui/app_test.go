@@ -38,14 +38,11 @@ func screenOf(t *testing.T, a *App, w, h int) string {
 func TestAppHeaderShowsConnection(t *testing.T) {
 	a := NewApp(testInfo)
 	a.Push(textPage("home", "hello"))
-	lines := render(t, a.root, 100, 24)
-	for _, want := range []string{"Context: default", "Engine: 27.3.1", "API: 1.47"} {
-		if !strings.Contains(lines[0], want) {
-			t.Fatalf("header %q does not contain %q", lines[0], want)
+	header := strings.Join(headerLines(t, a, 100), "\n")
+	for _, want := range []string{"Context: default", "Engine:  27.3.1", "API:     1.47", "<ctrl-c>"} {
+		if !strings.Contains(header, want) {
+			t.Fatalf("header does not contain %q:\n%s", want, header)
 		}
-	}
-	if !strings.Contains(lines[1], "<ctrl-c>") {
-		t.Fatalf("no key hints in %q", lines[1])
 	}
 }
 

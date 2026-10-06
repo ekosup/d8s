@@ -17,9 +17,9 @@ import (
 	"github.com/ekosup/d8s/internal/store"
 )
 
-// headerHeight is one line each for connection and global keys, and two for
-// view keys, which wrap on narrow terminals.
-const headerHeight = 4
+// headerHeight is the number of rows of the header, and so the number of
+// keys one header column holds.
+const headerHeight = 6
 
 type flashLevel int
 
@@ -70,7 +70,7 @@ type filterer interface {
 type App struct {
 	tv        *tview.Application
 	root      *tview.Flex
-	header    *tview.TextView
+	header    *tview.Flex // columns: connection info, general keys, view keys
 	pages     *tview.Pages
 	crumbs    *tview.TextView
 	status    *tview.TextView
@@ -143,7 +143,7 @@ func WithWatchOptions(o store.Options) Option { return func(a *App) { a.watchOpt
 func NewApp(info docker.Info, opts ...Option) *App {
 	a := &App{
 		tv:     tview.NewApplication(),
-		header: tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetWordWrap(true),
+		header: tview.NewFlex(),
 		pages:  tview.NewPages(),
 		crumbs: tview.NewTextView().SetDynamicColors(true),
 		status: tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignRight),
@@ -317,37 +317,80 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 	return ev
 }
 
+// drawHeader rebuilds the header: connection info in the first column, the
+// keys that work everywhere in the second, and the keys of the page on top
+// in as many further columns as they need.
 func (a *App) drawHeader() {
-	field := func(k, v string) string {
-		return fmt.Sprintf("[aqua]%s:[white] %s", k, tview.Escape(v))
-	}
-	fields := []string{
-		field("Context", a.info.Context),
-		field("Engine", a.info.ServerVersion),
-		field("API", a.info.APIVersion),
+	a.header.Clear()
+
+	info := [][2]string{
+		{"Context", a.info.Context},
+		{"Engine", a.info.ServerVersion},
+		{"API", a.info.APIVersion},
 	}
 	switch sw := a.info.Swarm; {
 	case sw.Manager && sw.Leader:
-		fields = append(fields, field("Swarm", "manager (leader)"))
+		info = append(info, [2]string{"Swarm", "manager (leader)"})
 	case sw.Manager:
-		fields = append(fields, field("Swarm", "manager"))
+		info = append(info, [2]string{"Swarm", "manager"})
 	case sw.Active:
-		fields = append(fields, field("Swarm", "worker"))
+		info = append(info, [2]string{"Swarm", "worker"})
 	}
-	line1 := " " + strings.Join(fields, "   ")
+	labelWidth, infoWidth := 0, 0
+	for _, f := range info {
+		labelWidth = max(labelWidth, len(f[0])+1)
+	}
+	var sb strings.Builder
+	for _, f := range info {
+		label := f[0] + ":"
+		fmt.Fprintf(&sb, " [aqua]%s[-]%s [white::b]%s[-:-:-]\n", label, strings.Repeat(" ", labelWidth-len(label)), tview.Escape(f[1]))
+		infoWidth = max(infoWidth, labelWidth+1+len([]rune(f[1])))
+	}
+	// The info column takes what it needs, within reason; keys share the rest.
+	a.header.AddItem(headerColumn(sb.String()), min(infoWidth+4, maxInfoWidth), 0, false)
 
-	hintLine := func(bs []binding) string {
-		parts := make([]string, 0, len(bs))
-		for _, b := range bs {
-			parts = append(parts, fmt.Sprintf("[steelblue]<%s>[gray] %s", b.label, strings.ToLower(b.desc)))
-		}
-		return " " + strings.Join(parts, "  ")
-	}
-	view := ""
+	columns := [][]binding{a.globalBindings()}
 	if p := a.top(); p != nil && p.hints != nil {
-		view = hintLine(p.hints())
+		hints := make([]binding, 0, 2*headerHeight)
+		for _, b := range p.hints() {
+			if !b.noHint {
+				hints = append(hints, b)
+			}
+		}
+		for len(hints) > 0 {
+			n := min(len(hints), headerHeight)
+			columns = append(columns, hints[:n])
+			hints = hints[n:]
+		}
 	}
-	a.header.SetText(line1 + "\n" + hintLine(a.globalBindings()) + "\n" + view)
+	for _, col := range columns {
+		text, width := hintColumn(col)
+		// Width is shared in proportion to what each column has to show.
+		a.header.AddItem(headerColumn(text), 0, width, false)
+	}
+}
+
+const maxInfoWidth = 44
+
+func headerColumn(text string) *tview.TextView {
+	return tview.NewTextView().SetDynamicColors(true).SetWrap(false).SetText(text)
+}
+
+// hintColumn renders bindings one per row with the keys padded to equal
+// width, and returns the text together with its widest row.
+func hintColumn(bs []binding) (text string, width int) {
+	keyWidth := 0
+	for _, b := range bs {
+		keyWidth = max(keyWidth, len([]rune(b.label))+2)
+	}
+	var sb strings.Builder
+	for _, b := range bs {
+		key := "<" + b.label + ">"
+		pad := strings.Repeat(" ", keyWidth-len([]rune(key)))
+		fmt.Fprintf(&sb, "[dodgerblue::b]%s[-:-:-]%s [white]%s[-]\n", tview.Escape(key), pad, tview.Escape(b.desc))
+		width = max(width, keyWidth+1+len([]rune(b.desc)))
+	}
+	return sb.String(), width + 2
 }
 
 func (a *App) drawCrumbs() {

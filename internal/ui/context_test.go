@@ -50,10 +50,13 @@ func contextHarness(t *testing.T) *contextFixture {
 func TestContextViewMarksActive(t *testing.T) {
 	fx := contextHarness(t)
 	s := fx.screen()
-	for _, want := range []string{"Contexts[2]", "ENDPOINT", "staging", "tcp://10.0.0.9:2376", "<enter> use"} {
+	for _, want := range []string{"Contexts[2]", "ENDPOINT", "staging", "tcp://10.0.0.9:2376"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q:\n%s", want, s)
 		}
+	}
+	if row, _ := hintAt(headerLines(t, fx.app, 120), "enter", "Use"); row < 0 {
+		t.Fatalf("no <enter> Use hint:\n%s", s)
 	}
 	lines := strings.Split(s, "\n")
 	if i := lineContaining(lines, "unix:///var/run/docker.sock"); i < 0 || !strings.Contains(lines[i], "*") {
@@ -69,7 +72,7 @@ func TestSwitchContext(t *testing.T) {
 	fx.until("new context", func() bool { return strings.Contains(fx.screen(), "staging-api") })
 
 	s := fx.screen()
-	for _, want := range []string{"Context: staging", "Engine: 26.1.4", "API: 1.45", "<containers>", "connected to staging"} {
+	for _, want := range []string{"Context: staging", "Engine:  26.1.4", "API:     1.45", "<containers>", "connected to staging"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q:\n%s", want, s)
 		}

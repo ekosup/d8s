@@ -43,18 +43,19 @@ func TestHeaderShowsSwarmRole(t *testing.T) {
 	h := swarmHarness(t)
 	h.show("services")
 	h.step()
-	if line := render(t, h.app.root, 120, 24)[0]; !strings.Contains(line, "Swarm: manager (leader)") {
-		t.Fatalf("header: %q", line)
+	header := func() string { return strings.Join(headerLines(t, h.app, 120), "\n") }
+	if got := header(); !strings.Contains(got, "manager (leader)") {
+		t.Fatalf("header:\n%s", got)
 	}
 	h.app.info.Swarm = docker.SwarmInfo{Active: true}
 	h.app.drawHeader()
-	if line := render(t, h.app.root, 120, 24)[0]; !strings.Contains(line, "Swarm: worker") {
-		t.Fatalf("header: %q", line)
+	if got := header(); !strings.Contains(got, "Swarm:   worker") {
+		t.Fatalf("header:\n%s", got)
 	}
 	h.app.info.Swarm = docker.SwarmInfo{}
 	h.app.drawHeader()
-	if line := render(t, h.app.root, 120, 24)[0]; strings.Contains(line, "Swarm") {
-		t.Fatalf("header mentions swarm on a standalone engine: %q", line)
+	if got := header(); strings.Contains(got, "Swarm") {
+		t.Fatalf("header mentions swarm on a standalone engine:\n%s", got)
 	}
 }
 

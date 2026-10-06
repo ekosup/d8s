@@ -15,6 +15,11 @@ type binding struct {
 	desc  string
 	do    func()
 	group string // help column; empty means the page's own column
+	// noHint keeps a working key out of the header, where space is short;
+	// help still lists it.
+	noHint bool
+	// A binding without an action is a header-only entry that stands for
+	// several keys, such as "0-5". It matches nothing and help skips it.
 }
 
 // Help columns besides a page's own.
@@ -29,7 +34,7 @@ func keyBinding(key tcell.Key, label, desc string, do func()) binding {
 }
 
 func (b binding) matches(ev *tcell.EventKey) bool {
-	if ev.Key() != b.key {
+	if b.do == nil || ev.Key() != b.key {
 		return false
 	}
 	return b.key != tcell.KeyRune || ev.Rune() == b.r

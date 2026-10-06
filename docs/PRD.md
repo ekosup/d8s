@@ -120,18 +120,24 @@ Compose project dan stack bukan objek di Docker API. Keduanya diturunkan dari la
 
 ## UX
 
-Layar d8s meniru k9s: header berisi konteks dan petunjuk tombol, satu tabel besar di tengah, breadcrumb dan pesan status di bawah. Tidak ada mouse yang diwajibkan dan tidak ada panel bertumpuk.
+Layar d8s meniru k9s: header berkolom di atas, satu tabel besar di tengah, breadcrumb dan pesan status di bawah. Tidak ada mouse yang diwajibkan dan tidak ada panel bertumpuk.
+
+Header terdiri dari kolom-kolom: info koneksi di kolom pertama, tombol yang berlaku di semua view di kolom kedua, dan tombol milik view aktif di kolom-kolom berikutnya (enam tombol per kolom, bertambah sesuai kebutuhan).
 
 ```text
- Context: prod-swarm   Engine: 27.3.1   Swarm: manager (leader)   <:> cmd  </> filter  <?> help
- Nodes: 5/5 ready      Services: 18     Mode: READ-ONLY           <l> logs <s> shell <d> inspect
-┌─ Services(all)[18] ──────────────────────────────────────────────────────────────────────────┐
-│ NAME            STACK   MODE        REPLICAS  IMAGE                 UPDATE      AGE          │
-│ shop_api        shop    replicated  2/5       registry/api:1.8.2    updating    3m           │
-│ shop_web        shop    replicated  3/3       registry/web:4.1.0    completed   2d           │
-│ mon_exporter    mon     global      5/5       prom/node-exporter    -           41d          │
+ Context: prod-swarm         <:>      Command mode   <enter>  Open       <r>      Restart
+ Engine:  27.5.1             </>      Filter         <d>      Inspect    <i>      Image
+ API:     1.47               <?>      Help           <y>      YAML       <u>      Rollback
+ Swarm:   manager (leader)   <esc>    Back           <l>      Logs       <ctrl-d> Delete
+                             <ctrl-c> Quit           <o>      Rollout    <space>  Mark
+                                                     <s>      Scale
+┌──────────────────────────────────────── Services[3] ─────────────────────────────────────────┐
+│NAME↑           STACK   MODE         REPLICAS  IMAGE                 PORTS         UPDATE  AGE│
+│mon_exporter    mon     global            5/5  prom/node-exporter    -             -       41d│
+│shop_api        shop    replicated        2/5  registry/api:1.8.2    -             paused  3m │
+│shop_web        shop    replicated        3/3  registry/web:4.1.0    8080->80/tcp  -       2d │
 └──────────────────────────────────────────────────────────────────────────────────────────────┘
- <stacks> <services>                                              shop_api: 3 task gagal (non-zero exit 137)
+ <stacks> <services>                                                    Scale shop_api: done
 ```
 
 Baris dengan replika kurang dari yang diinginkan diberi warna peringatan; task gagal berwarna kritis. Nama konteks yang ditandai produksi di konfigurasi tampil dengan warna berbeda di header.

@@ -65,10 +65,10 @@ func TestHelpCommand(t *testing.T) {
 func TestHeaderHintsComeFromBindings(t *testing.T) {
 	a := NewApp(testInfo)
 	a.Push(textPage("home", "body"))
-	line := render(t, a.root, 120, 24)[1]
+	lines := headerLines(t, a, 120)
 	for _, b := range a.globalBindings() {
-		if !strings.Contains(line, "<"+b.label+">") {
-			t.Fatalf("hint for <%s> missing from %q", b.label, line)
+		if row, _ := hintAt(lines, b.label, b.desc); row < 0 {
+			t.Fatalf("hint for <%s> missing from:\n%s", b.label, strings.Join(lines, "\n"))
 		}
 	}
 }

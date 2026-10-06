@@ -64,9 +64,12 @@ func (a *App) showHelp() {
 }
 
 func entriesOf(bs []binding) []helpEntry {
-	out := make([]helpEntry, len(bs))
-	for i, b := range bs {
-		out[i] = helpEntry{label: b.label, desc: b.desc}
+	out := make([]helpEntry, 0, len(bs))
+	for _, b := range bs {
+		if b.do == nil {
+			continue // a header-only summary of other keys
+		}
+		out = append(out, helpEntry{label: b.label, desc: b.desc})
 	}
 	return out
 }
