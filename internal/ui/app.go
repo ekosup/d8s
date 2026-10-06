@@ -17,8 +17,9 @@ import (
 	"github.com/ekosup/d8s/internal/store"
 )
 
-// headerHeight is one line each for connection, global keys and view keys.
-const headerHeight = 3
+// headerHeight is one line each for connection and global keys, and two for
+// view keys, which wrap on narrow terminals.
+const headerHeight = 4
 
 type flashLevel int
 
@@ -61,15 +62,16 @@ type filterer interface {
 // App is the application shell: header, a stack of pages, and a footer with
 // breadcrumbs and status messages.
 type App struct {
-	tv     *tview.Application
-	root   *tview.Flex
-	header *tview.TextView
-	pages  *tview.Pages
-	crumbs *tview.TextView
-	status *tview.TextView
-	footer *tview.Pages // "status" or "prompt"
-	prompt *tview.InputField
-	hint   *tview.TextView
+	tv        *tview.Application
+	root      *tview.Flex
+	header    *tview.TextView
+	pages     *tview.Pages
+	crumbs    *tview.TextView
+	status    *tview.TextView
+	statusBar *tview.Flex
+	footer    *tview.Pages // "status" or "prompt"
+	prompt    *tview.InputField
+	hint      *tview.TextView
 
 	prompting promptMode
 
@@ -129,7 +131,7 @@ func WithWatchOptions(o store.Options) Option { return func(a *App) { a.watchOpt
 func NewApp(info docker.Info, opts ...Option) *App {
 	a := &App{
 		tv:     tview.NewApplication(),
-		header: tview.NewTextView().SetDynamicColors(true),
+		header: tview.NewTextView().SetDynamicColors(true).SetWrap(true).SetWordWrap(true),
 		pages:  tview.NewPages(),
 		crumbs: tview.NewTextView().SetDynamicColors(true),
 		status: tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignRight),
@@ -157,13 +159,15 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	}
 
 	a.buildPrompt()
+	// Breadcrumbs take the width they need; messages get everything else.
+	a.statusBar = tview.NewFlex().
+		AddItem(a.crumbs, 1, 0, false).
+		AddItem(a.status, 0, 1, false)
 	a.footer = tview.NewPages().
 		AddPage(footerPrompt, tview.NewFlex().
 			AddItem(a.prompt, 0, 1, true).
 			AddItem(a.hint, 0, 2, false), true, false).
-		AddPage(footerStatus, tview.NewFlex().
-			AddItem(a.crumbs, 0, 1, false).
-			AddItem(a.status, 0, 2, false), true, true)
+		AddPage(footerStatus, a.statusBar, true, true)
 	a.root = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.header, headerHeight, 0, false).
 		AddItem(a.pages, 0, 1, true).
@@ -322,7 +326,9 @@ func (a *App) drawCrumbs() {
 		}
 		parts[i] = fmt.Sprintf("[%s]<%s>", color, tview.Escape(p.name))
 	}
-	a.crumbs.SetText(" " + strings.Join(parts, " "))
+	text := " " + strings.Join(parts, " ")
+	a.crumbs.SetText(text)
+	a.statusBar.ResizeItem(a.crumbs, tview.TaggedStringWidth(text)+1, 0)
 }
 
 // defaultDumpDir follows the XDG state directory convention.

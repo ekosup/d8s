@@ -68,6 +68,7 @@ func (a *App) openLogs(res resource.Resource, view *tableView) {
 		},
 	}
 	lv.pager.follow = true
+	lv.pager.saveName = "logs-" + row.Name()
 	a.logs = lv
 
 	keys := []binding{

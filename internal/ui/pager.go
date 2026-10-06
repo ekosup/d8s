@@ -16,8 +16,10 @@ import (
 type pager struct {
 	*tview.TextView
 	title string
-	max   int // lines kept; 0 = unlimited
-	lines []string
+	// saveName names saved files; empty means derive it from the title.
+	saveName string
+	max      int // lines kept; 0 = unlimited
+	lines    []string
 
 	wrap    bool
 	follow  bool // stay at the end as lines arrive
@@ -180,7 +182,13 @@ func (a *App) pushPager(name string, p *pager, onClose func(), extra ...binding)
 		runeBinding('N', "shift-n", "Previous match", func() { p.step(-1) }),
 		runeBinding('w', "w", "Wrap", p.toggleWrap),
 		runeBinding('c', "c", "Copy", func() { a.copyText(p.Content()) }),
-		keyBinding(tcell.KeyCtrlS, "ctrl-s", "Save", func() { a.saveText(p.title, p.Content()) }),
+		keyBinding(tcell.KeyCtrlS, "ctrl-s", "Save", func() {
+			name := p.saveName
+			if name == "" {
+				name = p.title
+			}
+			a.saveText(name, p.Content())
+		}),
 	}, extra...)
 	a.Push(&page{
 		name:     name,
