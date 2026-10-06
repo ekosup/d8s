@@ -159,8 +159,10 @@ Baris dengan replika kurang dari yang diinginkan diberi warna peringatan; task g
 | `m` | Halaman stats live | Baru |
 | `h` | Riwayat layer image | Baru |
 | `Ctrl-p` | Prune, dengan konfirmasi | Baru |
-| `S` | Scale service | Baru |
-| `u` | Rollback service ke spesifikasi sebelumnya | Baru |
+| `s`, `i`, `u` | Scale, ganti image, dan rollback service (di view service `s` berarti scale) | Baru |
+| `o` | Halaman rollout live sebuah service | Baru |
+| `a`, `p`, `b` | Di view node: ubah availability, promote atau demote, kelola label | Baru |
+| `h` | Di view task: sembunyikan atau tampilkan riwayat task | Baru |
 | `:q`, `Ctrl-c` | Keluar | Ya |
 
 ### Peta drill-down

@@ -189,31 +189,31 @@ Semua aksi di bawah dilakukan hanya pada resource `d8s-demo*`. Ketik `/d8s-demo`
 
 ### Story
 
-- [ ] **D8S-037 — Lingkungan uji Swarm multi-node untuk integration test** `Kualitas · P0 · M`
+- [x] **D8S-037 — Lingkungan uji Swarm multi-node untuk integration test** `Kualitas · P0 · M`
   - Terima: `make swarm-up` menaikkan satu manager dan dua worker sebagai container docker-in-docker di VM dev, membuat context `d8s-swarm`, dan men-deploy stack contoh. `make swarm-down` menghapus semuanya. Daemon utama VM tidak masuk Swarm.
-- [ ] **D8S-025 — Deteksi mode Swarm dan peran node** `Swarm · P0 · S`
+- [x] **D8S-025 — Deteksi mode Swarm dan peran node** `Swarm · P0 · S`
   - Terima: di worker atau engine non-Swarm, view Swarm menampilkan pesan penjelas, bukan error mentah.
-- [ ] **D8S-028 — View node: status, availability, peran, versi engine** `Swarm · P0 · S`
+- [x] **D8S-028 — View node: status, availability, peran, versi engine** `Swarm · P0 · S`
   - Terima: node down dan node drain dibedakan secara visual; `Enter` menampilkan task di node itu.
-- [ ] **D8S-026 — View service: mode, replika berjalan/diinginkan, image, port, status update** `Swarm · P0 · M`
+- [x] **D8S-026 — View service: mode, replika berjalan/diinginkan, image, port, status update** `Swarm · P0 · M`
   - Terima: service dengan replika kurang diberi warna peringatan; service global menampilkan jumlah node.
-- [ ] **D8S-027 — View task: state, error lengkap, node, riwayat; drill-down dari service dan node** `Swarm · P0 · M`
+- [x] **D8S-027 — View task: state, error lengkap, node, riwayat; drill-down dari service dan node** `Swarm · P0 · M`
   - Terima: pesan error task tampil utuh tanpa terpotong; task lama bisa disembunyikan.
-- [ ] **D8S-030 — Log service dan task lewat manager** `Swarm · P0 · M`
+- [x] **D8S-030 — Log service dan task lewat manager** `Swarm · P0 · M`
   - Terima: log gabungan diberi awalan task dan node; bekerja untuk task di node mana pun.
-- [ ] **D8S-031 — Aksi service: scale, force update, rollback, hapus** `Swarm · P0 · M`
+- [x] **D8S-031 — Aksi service: scale, force update, rollback, hapus** `Swarm · P0 · M`
   - Terima: scale lewat dialog angka; menghapus service meminta pengguna mengetik namanya.
-- [ ] **D8S-029 — View stack dari label namespace, dengan hapus stack** `Swarm · P1 · M`
+- [x] **D8S-029 — View stack dari label namespace, dengan hapus stack** `Swarm · P1 · M`
   - Terima: menghapus stack juga menghapus service, network, secret, dan config miliknya, seperti `docker stack rm`.
-- [ ] **D8S-032 — Ganti image service** `Swarm · P1 · M`
+- [x] **D8S-032 — Ganti image service** `Swarm · P1 · M`
   - Terima: dialog diisi tag saat ini; update memakai spesifikasi service terbaru agar tidak menimpa perubahan lain.
-- [ ] **D8S-036 — Pantauan rollout live** `Swarm · P1 · M`
+- [x] **D8S-036 — Pantauan rollout live** `Swarm · P1 · M`
   - Terima: menampilkan task baru dan lama, status update, dan pesan saat rollout dijeda karena gagal.
-- [ ] **D8S-033 — Aksi node: drain, active, pause, promote, demote, label** `Swarm · P1 · M`
+- [x] **D8S-033 — Aksi node: drain, active, pause, promote, demote, label** `Swarm · P1 · M`
   - Terima: demote manager terakhir ditolak dengan penjelasan.
-- [ ] **D8S-034 — View secret dan config: daftar, pemakai, isi config, hapus** `Swarm · P1 · S`
+- [x] **D8S-034 — View secret dan config: daftar, pemakai, isi config, hapus** `Swarm · P1 · S`
   - Terima: nilai secret tidak pernah tampil; yang masih dipakai service tidak bisa dihapus tanpa peringatan.
-- [ ] **D8S-035 — Shell ke task** `Swarm · P2 · M`
+- [x] **D8S-035 — Shell ke task** `Swarm · P2 · M`
   - Terima: langsung bila container ada di daemon terhubung; selain itu tampil alasan dan tawaran pindah konteks.
 
 ### Build
@@ -221,29 +221,34 @@ Semua aksi di bawah dilakukan hanya pada resource `d8s-demo*`. Ketik `/d8s-demo`
 ```bash
 make build
 make test lint
-./bin/d8s version   # v0.6.0
-make swarm-up       # 3 node docker-in-docker + context d8s-swarm + stack contoh "shop"
+./bin/d8s version       # v0.6.0
+make swarm-up           # 3 node docker-in-docker, context d8s-swarm (+ d8s-swarm-worker1/2), stack contoh "shop"
+make test-integration   # test klien Docker terhadap cluster itu
 ```
+
+`make swarm-up` butuh sekitar 30 detik. Daemon utama VM tidak ikut Swarm; cluster hidup di tiga container `d8s-swarm-*` dengan port 23750 sampai 23752 di localhost.
 
 ### Cek di VM dev
 
-1. `./bin/d8s` di context `default`: ketik `:svc`. Tampil pesan bahwa engine ini bukan manager Swarm, bukan error mentah.
-2. `:ctx`, pindah ke `d8s-swarm`. Header menampilkan `Swarm: manager (leader)`.
-3. `:no` menampilkan tiga node: satu manager dan dua worker, semuanya ready.
-4. `:stk` menampilkan stack `shop`. `Enter` menampilkan service-nya; `Enter` lagi menampilkan task-nya beserta node tempatnya berjalan.
-5. `l` pada service `shop_web`. Log beberapa task tampil bercampur, masing-masing berawalan task dan node, termasuk task di worker.
-6. `S` pada `shop_web`, isi 5. Kolom replika naik sendiri ke 5/5.
-7. **Skenario rollout gagal.** Ganti image `shop_web` ke tag yang tidak ada. Baris service berubah warna, status update menjadi paused, dan view rollout menampilkan task baru gagal sementara task lama tetap jalan.
-8. `Enter` pada `shop_web`; task gagal tampil dengan pesan error lengkap, tidak terpotong. `l` padanya, lalu `Esc`.
-9. `u` untuk rollback. Replika kembali penuh dan status update menjadi rollback completed.
-10. Hitung penekanan tombol dari melihat baris bermasalah sampai membaca log task gagal: paling banyak 10.
-11. `:no`, drain satu worker. Di view task node itu, task berpindah ke node lain. Kembalikan ke active.
-12. Coba demote manager tunggal; ditolak dengan penjelasan.
-13. `docker stop` salah satu container worker dari terminal lain. Di `:no`, node itu berubah menjadi down dengan warna berbeda.
-14. `:sec` hanya menampilkan metadata secret. `:cfg` lalu `Enter` menampilkan isi config.
-15. `s` pada task di manager membuka shell. `s` pada task di worker menampilkan penjelasan dan tawaran pindah konteks.
-16. Hapus stack `shop` (mengetik namanya). `:svc` menjadi kosong.
-17. `make swarm-down`. `docker context ls` tidak lagi memuat `d8s-swarm`, dan `docker info` di daemon utama tetap menunjukkan Swarm tidak aktif.
+1. `./bin/d8s` di context `default`: ketik `:svc`. Tampil penjelasan bahwa engine ini bukan bagian dari swarm, bukan error mentah.
+2. `:ctx`, `/d8s-swarm`, `Enter` pada `d8s-swarm`. Header menampilkan `Swarm: manager (leader)`.
+3. `:no` menampilkan tiga node: satu manager (leader) dan dua worker, semuanya ready.
+4. `:stk` menampilkan stack `shop` dengan `5/5`. `Enter` menampilkan dua service-nya; `Enter` pada `shop_web` menampilkan task-nya beserta node tempatnya berjalan. Breadcrumb menunjukkan `<stacks> <services> <tasks>`.
+5. `Esc` ke daftar service, lalu `l` pada `shop_web`. Tiap baris log berawalan `task@node`, termasuk dari task di worker.
+6. `s` pada `shop_web`: dialog terisi `3`. Ganti menjadi `5`, `Enter`. Kolom replika naik sendiri ke `5/5`.
+7. **Skenario rollout gagal.** `i` pada `shop_web`, ganti image menjadi `nginx:tidak-ada`, `Enter`. Dalam belasan detik baris service berubah warna, kolom UPDATE menjadi `paused`, dan replika turun (misalnya `4/5`). `o` membuka halaman rollout: task baru yang `rejected` di atas, task lama yang masih `running` di bawah, beserta pesan jedanya.
+8. `Esc`, lalu `Enter` pada `shop_web`. Task gagal tampil merah dengan pesan error lengkap (`No such image: nginx:tidak-ada`). `h` menyembunyikan task lama yang sudah berhenti bersih. `l` pada task membuka log-nya.
+9. `Esc` ke daftar service, `u` pada `shop_web`: dialog menyebut image yang akan dipulihkan. Setelah `y`, replika kembali `5/5` dan UPDATE menjadi `rollback_completed`.
+10. Hitung penekanan tombol dari melihat baris bermasalah sampai membaca error task: `Enter` saja; sampai log task: `Enter` lalu `l`.
+11. `:no`, pilih satu worker, `a`, isi `drain`. Kolom AVAILABILITY berubah dan barisnya berganti warna; `Enter` menampilkan task node itu berpindah. Kembalikan dengan `a` dan `active`.
+12. Pilih manager, `p`, `y`. Ditolak dengan pesan dari swarm bahwa manager terakhir tidak bisa di-demote.
+13. Dari terminal lain `docker stop d8s-swarm-worker2`. Dalam sekitar 10 detik node itu tampil `down` dengan warna berbeda. `docker start d8s-swarm-worker2` mengembalikannya.
+14. `:sec` hanya menampilkan metadata secret; `d` menampilkan inspect tanpa nilainya. `:cfg` lalu `Enter` menampilkan isi config.
+15. `:tasks`, `/manager`, `s` pada salah satu task: shell terbuka di container-nya; `exit` kembali. `Esc`, `/worker1`, `s`: muncul penjelasan bahwa container ada di node lain dan tawaran pindah ke context `d8s-swarm-worker1`. Setelah `y`, header berganti dan `s` pada container itu membuka shell.
+16. Kembali ke `d8s-swarm` lewat `:ctx`. `:stk`, `Ctrl-d` pada `shop`: dialog meminta namanya diketik. Nama yang salah ditolak; setelah mengetik `shop`, stack hilang dan `:svc` kosong.
+17. `make swarm-down`. `docker context ls` tidak lagi memuat `d8s-swarm*`, dan `docker info` di daemon utama tetap menunjukkan Swarm tidak aktif.
+
+**Catatan:** penawaran pindah context di langkah 15 bekerja bila ada context yang namanya sama dengan hostname node. `make swarm-up` membuatnya begitu; di cluster sungguhan, context perlu dinamai sesuai hostname node, atau pengguna pindah sendiri lewat `:ctx`.
 
 ---
 
