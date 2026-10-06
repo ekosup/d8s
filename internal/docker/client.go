@@ -56,11 +56,24 @@ const (
 	OpRemove  ContainerOp = "remove" // forced: also removes a running container
 )
 
+// Kind names a type of Docker object for calls that work on several.
+type Kind string
+
+// Object kinds.
+const (
+	KindContainer Kind = "container"
+	KindImage     Kind = "image"
+	KindVolume    Kind = "volume"
+	KindNetwork   Kind = "network"
+)
+
 // Client is everything d8s needs from a Docker daemon.
 type Client interface {
 	Info(ctx context.Context) (Info, error)
 	Containers(ctx context.Context) ([]Container, error)
 	ContainerAction(ctx context.Context, id string, op ContainerOp) error
+	// Inspect returns the daemon's full description of an object as JSON.
+	Inspect(ctx context.Context, kind Kind, id string) ([]byte, error)
 	// Events streams daemon events until ctx is cancelled. An error on the
 	// second channel ends the stream; the caller subscribes again.
 	Events(ctx context.Context) (<-chan Event, <-chan error)

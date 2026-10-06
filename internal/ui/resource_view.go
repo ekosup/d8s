@@ -17,7 +17,7 @@ func (a *App) ShowResource(res resource.Resource) {
 	a.view = view
 	a.stale = false
 
-	actions := a.actionBindings(res, view)
+	actions := append(a.capabilityBindings(res, view), a.actionBindings(res, view)...)
 	a.resetStack(&page{
 		name: res.Name,
 		prim: view,
@@ -25,7 +25,8 @@ func (a *App) ShowResource(res resource.Resource) {
 			return append(append([]binding(nil), actions...), view.bindings()...)
 		},
 		hints: func() []binding { return actions },
-		table: view,
+		table:  view,
+		filter: view,
 		back: func() bool {
 			if view.Filter() == "" {
 				return false
@@ -77,6 +78,9 @@ func (a *App) resetStack(root *page) {
 	a.Push(root)
 	for _, p := range old {
 		a.pages.RemovePage(p.id)
+		if p.onClose != nil {
+			p.onClose()
+		}
 	}
 	a.tv.SetFocus(root.prim)
 }

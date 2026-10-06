@@ -72,4 +72,7 @@ type Resource struct {
 	EventTypes []string
 	List       func(ctx context.Context, c docker.Client) ([]Row, error)
 	Actions    []Action
+	// Inspect returns the object's full description as JSON. Nil means the
+	// resource has nothing more to show than its row.
+	Inspect func(ctx context.Context, c docker.Client, row Row) ([]byte, error)
 }

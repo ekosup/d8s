@@ -39,6 +39,7 @@ func Containers(now func() time.Time) Resource {
 			return rows, nil
 		},
 		Actions: containerActions(),
+		Inspect: inspectAs(docker.KindContainer),
 	}
 }
 
@@ -118,5 +119,12 @@ func humanAge(d time.Duration) string {
 		return fmt.Sprintf("%dh", int(d/time.Hour))
 	default:
 		return fmt.Sprintf("%dd", int(d/(24*time.Hour)))
+	}
+}
+
+// inspectAs returns an Inspect function for rows whose ID is the object's ID.
+func inspectAs(kind docker.Kind) func(context.Context, docker.Client, Row) ([]byte, error) {
+	return func(ctx context.Context, c docker.Client, row Row) ([]byte, error) {
+		return c.Inspect(ctx, kind, row.ID)
 	}
 }

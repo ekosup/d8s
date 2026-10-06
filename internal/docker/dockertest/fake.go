@@ -19,6 +19,8 @@ type Fake struct {
 	subs       []subscription
 	calls      []Call
 	actionErr  error
+	inspect    map[string][]byte
+	inspectErr error
 }
 
 // Call records one mutating request made through the fake.
@@ -123,6 +125,36 @@ func (f *Fake) SetActionError(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.actionErr = err
+}
+
+// Inspect implements docker.Client.
+func (f *Fake) Inspect(_ context.Context, kind docker.Kind, id string) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.inspectErr != nil {
+		return nil, f.inspectErr
+	}
+	if raw, ok := f.inspect[string(kind)+"/"+id]; ok {
+		return raw, nil
+	}
+	return []byte("{}"), nil
+}
+
+// SetInspect sets the JSON returned for one object.
+func (f *Fake) SetInspect(kind docker.Kind, id string, raw []byte) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.inspect == nil {
+		f.inspect = map[string][]byte{}
+	}
+	f.inspect[string(kind)+"/"+id] = raw
+}
+
+// SetInspectError makes Inspect fail with err; nil restores it.
+func (f *Fake) SetInspectError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.inspectErr = err
 }
 
 // Events implements docker.Client. Every call is a new subscription.

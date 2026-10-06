@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -103,6 +104,38 @@ func (c *sdkClient) ContainerAction(ctx context.Context, id string, op Container
 		return fmt.Errorf("%s container: %w", op, err)
 	}
 	return nil
+}
+
+func (c *sdkClient) Inspect(ctx context.Context, kind Kind, id string) ([]byte, error) {
+	var (
+		raw []byte
+		err error
+	)
+	switch kind {
+	case KindContainer:
+		var res client.ContainerInspectResult
+		res, err = c.cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
+		raw = res.Raw
+	case KindImage:
+		var res client.ImageInspectResult
+		if res, err = c.cli.ImageInspect(ctx, id); err == nil {
+			raw, err = json.Marshal(res.InspectResponse)
+		}
+	case KindVolume:
+		var res client.VolumeInspectResult
+		res, err = c.cli.VolumeInspect(ctx, id, client.VolumeInspectOptions{})
+		raw = res.Raw
+	case KindNetwork:
+		var res client.NetworkInspectResult
+		res, err = c.cli.NetworkInspect(ctx, id, client.NetworkInspectOptions{})
+		raw = res.Raw
+	default:
+		return nil, fmt.Errorf("cannot inspect %q", kind)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("inspect %s: %w", kind, err)
+	}
+	return raw, nil
 }
 
 func (c *sdkClient) Events(ctx context.Context) (<-chan Event, <-chan error) {

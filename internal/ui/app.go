@@ -3,7 +3,10 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -36,13 +39,23 @@ type page struct {
 	// back runs on Esc before the page is popped. Returning true means the
 	// key was used (for example to clear a filter) and the page stays.
 	back func() bool
-	// table is set when the page is a table, which makes it filterable.
+	// table is set when the page is a table; help then lists its navigation keys.
 	table *tableView
+	// filter receives what is typed at the `/` prompt, live.
+	filter filterer
+	// onClose runs when the page leaves the stack, to stop what feeds it.
+	onClose func()
 	// hints are the bindings worth advertising in the header.
 	hints func() []binding
 	// modal pages take every key: nothing reaches the pages below or the
 	// global bindings, except Esc (close) and Ctrl-C (quit).
 	modal bool
+}
+
+// filterer is anything the `/` prompt can narrow down or search.
+type filterer interface {
+	Filter() string
+	SetFilter(text string)
 }
 
 // App is the application shell: header, a stack of pages, and a footer with
@@ -64,6 +77,12 @@ type App struct {
 	stack      []*page
 	nextPageID int
 	stop       func()
+
+	// Seams for the pager's side effects.
+	dumpDir string            // where ctrl-s saves
+	now     func() time.Time  // names saved files
+	copy    func(data []byte) // puts text on the clipboard
+	screen  tcell.Screen      // the live screen, once drawing has started
 
 	client    docker.Client
 	executor  *action.Executor
@@ -110,6 +129,17 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	}
 	a.stop = a.tv.Stop
 	a.queue = func(f func()) { a.tv.QueueUpdateDraw(f) }
+	a.now = time.Now
+	a.dumpDir = defaultDumpDir()
+	a.tv.SetBeforeDrawFunc(func(s tcell.Screen) bool {
+		a.screen = s
+		return false
+	})
+	a.copy = func(data []byte) {
+		if a.screen != nil {
+			a.screen.SetClipboard(data) // OSC 52; the terminal decides whether to honour it
+		}
+	}
 	for _, o := range opts {
 		o(a)
 	}
@@ -157,8 +187,12 @@ func (a *App) Pop() bool {
 		return false
 	}
 	last := len(a.stack) - 1
-	a.pages.RemovePage(a.stack[last].id)
+	closing := a.stack[last]
+	a.pages.RemovePage(closing.id)
 	a.stack = a.stack[:last]
+	if closing.onClose != nil {
+		closing.onClose()
+	}
 	a.tv.SetFocus(a.stack[last-1].prim)
 	a.drawCrumbs()
 	a.drawHeader()
@@ -277,4 +311,17 @@ func (a *App) drawCrumbs() {
 		parts[i] = fmt.Sprintf("[%s]<%s>", color, tview.Escape(p.name))
 	}
 	a.crumbs.SetText(" " + strings.Join(parts, " "))
+}
+
+// defaultDumpDir follows the XDG state directory convention.
+func defaultDumpDir() string {
+	base := os.Getenv("XDG_STATE_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return filepath.Join(os.TempDir(), "d8s", "dumps")
+		}
+		base = filepath.Join(home, ".local", "state")
+	}
+	return filepath.Join(base, "d8s", "dumps")
 }

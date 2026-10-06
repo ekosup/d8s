@@ -69,10 +69,10 @@ func (a *App) openPrompt(mode promptMode) {
 	switch mode {
 	case promptFilter:
 		p := a.top()
-		if p == nil || p.table == nil {
+		if p == nil || p.filter == nil {
 			return // nothing to filter on this page
 		}
-		initial = p.table.Filter()
+		initial = p.filter.Filter()
 		a.prompt.SetLabel(" /")
 	case promptCommand:
 		a.prompt.SetLabel(" :")
@@ -107,8 +107,8 @@ func (a *App) submitPrompt() {
 
 func (a *App) cancelPrompt() {
 	if a.prompting == promptFilter {
-		if p := a.top(); p != nil && p.table != nil {
-			p.table.SetFilter("")
+		if p := a.top(); p != nil && p.filter != nil {
+			p.filter.SetFilter("")
 		}
 	}
 	a.closePrompt()
@@ -119,8 +119,8 @@ func (a *App) cancelPrompt() {
 func (a *App) promptChanged(text string) {
 	switch a.prompting {
 	case promptFilter:
-		if p := a.top(); p != nil && p.table != nil {
-			p.table.SetFilter(text)
+		if p := a.top(); p != nil && p.filter != nil {
+			p.filter.SetFilter(text)
 		}
 	case promptCommand:
 		a.hint.SetText("[gray]" + tview.Escape(strings.Join(a.candidates(text), "  ")) + " ")
