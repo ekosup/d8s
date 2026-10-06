@@ -86,8 +86,8 @@ load_token() {
 		GITHUB_TOKEN="$(sed -n 's/^GITHUB_TOKEN=//p' .env | tr -d '[:space:]"'"'"'')"
 	fi
 	if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-		[[ "$dry_run" == 1 ]] && { echo "note: GITHUB_TOKEN is empty; a real run would stop here (see .env.example)"; return; }
-		die "GITHUB_TOKEN is empty; put it in .env (see .env.example)"
+		[[ "$dry_run" == 1 ]] && { echo "note: GITHUB_TOKEN is empty; a real run would stop here, as a line GITHUB_TOKEN=<token>"; return; }
+		die "GITHUB_TOKEN is empty; put it in .env as a line GITHUB_TOKEN=<token>"
 	fi
 	export GITHUB_TOKEN
 }
