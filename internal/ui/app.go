@@ -31,6 +31,8 @@ type page struct {
 	// back runs on Esc before the page is popped. Returning true means the
 	// key was used (for example to clear a filter) and the page stays.
 	back func() bool
+	// table is set when the page is a table, which makes it filterable.
+	table *tableView
 }
 
 // App is the application shell: header, a stack of pages, and a footer with
@@ -42,6 +44,11 @@ type App struct {
 	pages  *tview.Pages
 	crumbs *tview.TextView
 	status *tview.TextView
+	footer *tview.Pages // "status" or "prompt"
+	prompt *tview.InputField
+	hint   *tview.TextView
+
+	prompting promptMode
 
 	info  docker.Info
 	stack []*page
@@ -90,13 +97,18 @@ func NewApp(info docker.Info, opts ...Option) *App {
 		o(a)
 	}
 
-	footer := tview.NewFlex().
-		AddItem(a.crumbs, 0, 1, false).
-		AddItem(a.status, 0, 2, false)
+	a.buildPrompt()
+	a.footer = tview.NewPages().
+		AddPage(footerPrompt, tview.NewFlex().
+			AddItem(a.prompt, 0, 1, true).
+			AddItem(a.hint, 0, 2, false), true, false).
+		AddPage(footerStatus, tview.NewFlex().
+			AddItem(a.crumbs, 0, 1, false).
+			AddItem(a.status, 0, 2, false), true, true)
 	a.root = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.header, 2, 0, false).
 		AddItem(a.pages, 0, 1, true).
-		AddItem(footer, 1, 0, false)
+		AddItem(a.footer, 1, 0, false)
 
 	a.tv.SetRoot(a.root, true)
 	a.tv.SetInputCapture(a.handleKey)
@@ -160,6 +172,9 @@ func (a *App) clearFlash() { a.status.SetText("") }
 // globalBindings are available on every page.
 func (a *App) globalBindings() []binding {
 	return []binding{
+		runeBinding(':', ":", "Command mode", func() { a.openPrompt(promptCommand) }),
+		runeBinding('/', "/", "Filter", func() { a.openPrompt(promptFilter) }),
+		runeBinding('?', "?", "Help", a.showHelp),
 		keyBinding(tcell.KeyEscape, "esc", "Back", a.back),
 		keyBinding(tcell.KeyCtrlC, "ctrl-c", "Quit", func() { a.stop() }),
 	}
@@ -175,6 +190,14 @@ func (a *App) back() {
 // handleKey is the application-wide input capture. It returns nil when the
 // key was consumed, or the event to pass on to the focused primitive.
 func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
+	if a.prompting != promptNone {
+		// Everything typed belongs to the prompt, except the way out.
+		if ev.Key() == tcell.KeyCtrlC {
+			a.stop()
+			return nil
+		}
+		return ev
+	}
 	a.clearFlash()
 	if p := a.top(); p != nil && p.bindings != nil {
 		for _, b := range p.bindings() {
@@ -203,7 +226,7 @@ func (a *App) drawHeader() {
 		field("API", a.info.APIVersion),
 	}, "   ")
 
-	hints := make([]string, 0, 4)
+	hints := make([]string, 0, 8)
 	for _, b := range a.globalBindings() {
 		hints = append(hints, fmt.Sprintf("[steelblue]<%s>[gray] %s", b.label, strings.ToLower(b.desc)))
 	}

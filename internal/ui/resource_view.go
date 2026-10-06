@@ -21,6 +21,14 @@ func (a *App) ShowResource(res resource.Resource) {
 		name:     res.Name,
 		prim:     view,
 		bindings: view.bindings,
+		table:    view,
+		back: func() bool {
+			if view.Filter() == "" {
+				return false
+			}
+			view.SetFilter("")
+			return true
+		},
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
