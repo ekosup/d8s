@@ -242,6 +242,7 @@ make test-integration  # test terhadap cluster itu
 make test-matrix       # hal yang sama terhadap engine tertua dan terbaru
 make bench             # ukur terhadap target performa
 make release-snapshot  # semua artefak rilis ke dist/, tanpa mempublikasikan
+make release           # publikasikan versi yang sudah di-tag ke GitHub Releases (butuh GITHUB_TOKEN)
 ```
 
 `make swarm-up` tidak mengubah daemon Anda menjadi anggota Swarm: clusternya hidup di tiga container. Spesifikasi produk ada di [docs/PRD.md](docs/PRD.md) dan rencana kerjanya di [docs/BACKLOG.md](docs/BACKLOG.md).
