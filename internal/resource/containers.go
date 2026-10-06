@@ -6,6 +6,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/ekosup/d8s/internal/docker"
@@ -21,7 +22,23 @@ func Containers(now func() time.Time) Resource {
 // containersWhere is the container list narrowed to those keep accepts. It
 // is what other resources drill down into.
 func containersWhere(now func() time.Time, title string, keep func(docker.Container) bool) Resource {
+	// Per view, not global: hiding stopped containers in one list should
+	// not empty a drill-down that exists to show them.
+	var hideInactive atomic.Bool
+	toggle := Action{
+		Key: "h", Name: "Inactive", Target: "inactive containers", Quiet: true,
+		Run: func(context.Context, docker.Client, Row) error {
+			hideInactive.Store(!hideInactive.Load())
+			return nil
+		},
+	}
 	return Resource{
+		Note: func() string {
+			if hideInactive.Load() {
+				return "active only"
+			}
+			return ""
+		},
 		Name:  "containers",
 		Title: title,
 		Columns: []Column{
@@ -38,6 +55,9 @@ func containersWhere(now func() time.Time, title string, keep func(docker.Contai
 				if keep != nil && !keep(x) {
 					continue
 				}
+				if hideInactive.Load() && !containerIsActive(x) {
+					continue
+				}
 				age := now().Sub(x.Created)
 				rows = append(rows, Row{
 					ID:       x.ID,
@@ -49,7 +69,7 @@ func containersWhere(now func() time.Time, title string, keep func(docker.Contai
 			}
 			return rows, nil
 		},
-		Actions: containerActions(),
+		Actions: append(containerActions(), toggle),
 		Inspect: inspectAs(docker.KindContainer),
 		Logs: func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error) {
 			return c.ContainerLogs(ctx, row.ID, opts)
@@ -61,6 +81,17 @@ func containersWhere(now func() time.Time, title string, keep func(docker.Contai
 }
 
 const attrState = "state"
+
+// containerIsActive reports whether a container has a live process:
+// running, or paused or restarting, which are still its own states of
+// being up. Created, exited and dead containers are inactive.
+func containerIsActive(c docker.Container) bool {
+	switch c.State {
+	case "running", "paused", "restarting", "removing":
+		return true
+	}
+	return false
+}
 
 func containerActions() []Action {
 	op := func(key, name string, confirm bool, pick func(Row) docker.ContainerOp) Action {

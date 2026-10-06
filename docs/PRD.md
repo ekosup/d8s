@@ -162,6 +162,7 @@ Baris dengan replika kurang dari yang diinginkan diberi warna peringatan; task g
 | `n`, `Shift-n` | Kecocokan berikut dan sebelumnya di inspect dan log | Ya |
 | `a`, `x`, `r` | Start, stop, restart container; `r` juga force update service | Baru |
 | `p` | Pause atau resume container | Baru |
+| `h` | Di view container: sembunyikan atau tampilkan container yang tidak aktif | Baru |
 | `m` | Halaman stats live | Baru |
 | `h` | Riwayat layer image | Baru |
 | `Ctrl-p` | Prune, dengan konfirmasi | Baru |

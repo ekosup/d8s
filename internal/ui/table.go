@@ -20,6 +20,9 @@ type tableView struct {
 	sortKeys []columnKey
 
 	marks map[string]bool // IDs the user marked for a bulk action
+	// note, when set, supplies a remark for the title about how the list
+	// is narrowed at the source, such as "active only".
+	note func() string
 
 	natural  []int // width each column wants, from the last refresh
 	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
@@ -168,9 +171,15 @@ func (v *tableView) refresh() {
 
 func (v *tableView) titleText() string {
 	total := v.model.Total()
-	t := fmt.Sprintf(" %s[%d] ", v.title, total)
+	name := v.title
+	if v.note != nil {
+		if n := v.note(); n != "" {
+			name += "(" + n + ")"
+		}
+	}
+	t := fmt.Sprintf(" %s[%d] ", name, total)
 	if f := v.model.FilterText(); f != "" {
-		t = fmt.Sprintf(" %s[%d/%d] </%s> ", v.title, len(v.shown), total, tview.Escape(f))
+		t = fmt.Sprintf(" %s[%d/%d] </%s> ", name, len(v.shown), total, tview.Escape(f))
 	}
 	if n := len(v.marks); n > 0 {
 		t += fmt.Sprintf("(%d marked) ", n)

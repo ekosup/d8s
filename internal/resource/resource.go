@@ -112,6 +112,9 @@ type Resource struct {
 	// EventTypes lists the daemon event types that should trigger a refresh.
 	// Empty means the resource can only be polled.
 	EventTypes []string
+	// Note, when set, returns a short remark for the table title about how
+	// the list is currently narrowed, such as "active only", or "".
+	Note func() string
 	// Swarm marks a resource that only a swarm manager can list.
 	Swarm bool
 	// SortColumn and SortDesc are the order a view opens with. The zero

@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/rivo/tview"
 
@@ -37,6 +38,7 @@ func (a *App) resourcePage(res resource.Resource) *page {
 		return a.notManagerPage(res)
 	}
 	view := newTableView(res.Title, res.Columns)
+	view.note = res.Note
 	view.SetSort(res.SortColumn, res.SortDesc)
 	var cancel context.CancelFunc
 	stop := func() {
@@ -60,8 +62,11 @@ func (a *App) resourcePage(res resource.Resource) *page {
 	}
 
 	actions := append(a.capabilityBindings(res, view), a.actionBindings(res, view)...)
+	// advertised is what the header shows. Marking stays out of it: the
+	// header has room for a view's own verbs, and help lists every key.
+	advertised := actions
 	if len(res.Actions) > 0 {
-		actions = append(actions, runeBinding(' ', "space", "Mark", view.toggleMark))
+		actions = append(slices.Clone(actions), runeBinding(' ', "space", "Mark", view.toggleMark))
 	}
 	return &page{
 		name: res.Name,
@@ -69,7 +74,7 @@ func (a *App) resourcePage(res resource.Resource) *page {
 		bindings: func() []binding {
 			return append(append([]binding(nil), actions...), view.bindings()...)
 		},
-		hints:   func() []binding { return actions },
+		hints:   func() []binding { return advertised },
 		table:   view,
 		filter:  view,
 		pause:   stop,
