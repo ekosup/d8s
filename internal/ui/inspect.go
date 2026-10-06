@@ -21,6 +21,15 @@ const fetchTimeout = 15 * time.Second
 // do beyond listing: inspect now, logs and shell as they are added.
 func (a *App) capabilityBindings(res resource.Resource, view *tableView) []binding {
 	var out []binding
+	if res.Connect != nil {
+		out = append(out, keyBinding(tcell.KeyEnter, "enter", "Use", func() {
+			if row, ok := view.SelectedRow(); ok {
+				if ep, ok := res.Connect(row); ok {
+					a.switchTo(ep)
+				}
+			}
+		}))
+	}
 	if res.Open != nil {
 		out = append(out, keyBinding(tcell.KeyEnter, "enter", "Open", func() {
 			if row, ok := view.SelectedRow(); ok {

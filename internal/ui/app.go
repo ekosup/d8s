@@ -98,6 +98,7 @@ type App struct {
 	screen  tcell.Screen      // the live screen, once drawing has started
 
 	client    docker.Client
+	connect   Connector
 	executor  *action.Executor
 	registry  *resource.Registry
 	watchOpts store.Options

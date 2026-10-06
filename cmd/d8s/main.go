@@ -28,14 +28,27 @@ func run(args []string) error {
 		return nil
 	}
 
-	client, info, err := connect()
+	ep, err := docker.ResolveEndpoint(os.Getenv)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = client.Close() }()
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+	client, info, err := connect(ctx, ep)
+	if err != nil {
+		return err
+	}
 
 	registry, err := resource.Default(time.Now)
 	if err != nil {
+		return err
+	}
+	var app *ui.App
+	contexts := resource.Contexts(
+		func() ([]docker.Endpoint, error) { return docker.ListContexts(os.Getenv) },
+		func() string { return app.Context() },
+	)
+	if err := registry.Register(contexts); err != nil {
 		return err
 	}
 	home, err := registry.Lookup("containers")
@@ -43,18 +56,14 @@ func run(args []string) error {
 		return err
 	}
 
-	app := ui.NewApp(info, ui.WithClient(client), ui.WithRegistry(registry))
+	app = ui.NewApp(info, ui.WithClient(client), ui.WithRegistry(registry), ui.WithConnector(connect))
+	defer app.Close()
 	app.ShowResource(home)
 	return app.Run()
 }
 
-func connect() (docker.Client, docker.Info, error) {
-	ep, err := docker.ResolveEndpoint(os.Getenv)
-	if err != nil {
-		return nil, docker.Info{}, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
-	defer cancel()
+// connect opens a client for ep and asks the daemon who it is.
+func connect(ctx context.Context, ep docker.Endpoint) (docker.Client, docker.Info, error) {
 	client, err := docker.Connect(ctx, ep)
 	if err != nil {
 		return nil, docker.Info{}, err

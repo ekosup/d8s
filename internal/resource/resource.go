@@ -101,6 +101,9 @@ type Resource struct {
 	Logs func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error)
 	// Open returns the view Enter drills down into for a row.
 	Open func(row Row) (Resource, bool)
+	// Connect returns the daemon Enter switches the whole application to.
+	// Only the context list sets it.
+	Connect func(row Row) (docker.Endpoint, bool)
 	// Pages are extra text views about a row.
 	Pages []TextPage
 	// Exec starts an interactive command in the row's container. Nil means
