@@ -24,7 +24,7 @@ func (a *App) ShowResource(res resource.Resource) {
 		bindings: func() []binding {
 			return append(append([]binding(nil), actions...), view.bindings()...)
 		},
-		hints: func() []binding { return actions },
+		hints:  func() []binding { return actions },
 		table:  view,
 		filter: view,
 		back: func() bool {
