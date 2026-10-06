@@ -38,14 +38,13 @@ tag: ## annotated tag v<version>; refuses a dirty tree
 	@test -z "$$(git status --porcelain)" || { echo "working tree is dirty"; exit 1; }
 	git tag -a "v$(VERSION)" -m "v$(VERSION)"
 
-demo-up: ## create d8s-demo-* containers for manual checks
-	@docker rm -f d8s-demo-web d8s-demo-idle >/dev/null 2>&1 || true
-	docker run -d --name d8s-demo-web --label d8s.demo=1 $(DEMO_IMAGE)
-	docker run -d --name d8s-demo-idle --label d8s.demo=1 $(DEMO_IMAGE) sleep infinity
+DEMO_COMPOSE := docker compose -f test/fixtures/demo/compose.yml
 
-demo-down: ## remove d8s-demo-* containers
-	@ids="$$(docker ps -aq --filter label=d8s.demo=1)"; \
-	if [ -n "$$ids" ]; then docker rm -f $$ids; fi
+demo-up: ## create d8s-demo* containers, network and volume for manual checks
+	DEMO_IMAGE=$(DEMO_IMAGE) $(DEMO_COMPOSE) up -d
+
+demo-down: ## remove everything demo-up created
+	DEMO_IMAGE=$(DEMO_IMAGE) $(DEMO_COMPOSE) down --volumes
 
 clean:
 	rm -rf bin/d8s dist

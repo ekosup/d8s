@@ -120,33 +120,33 @@ make test lint      # harus hijau
 
 ### Story
 
-- [ ] **D8S-011 — Aksi container: start, stop, restart, pause, kill, hapus** `Engine · P0 · M`
+- [x] **D8S-011 — Aksi container: start, stop, restart, pause, kill, hapus** `Engine · P0 · M`
   - Terima: aksi destruktif meminta konfirmasi; hasil atau error tampil di baris status.
-- [ ] **D8S-014 — Inspect: tampilan YAML dan JSON dengan pencarian dan salin** `Observasi · P0 · S`
+- [x] **D8S-014 — Inspect: tampilan YAML dan JSON dengan pencarian dan salin** `Observasi · P0 · S`
   - Terima: tersedia di setiap view resource lewat `d` dan `y`.
-- [ ] **D8S-012 — Log viewer: follow, rentang waktu, timestamp, wrap, cari, simpan ke file** `Observasi · P0 · L`
+- [x] **D8S-012 — Log viewer: follow, rentang waktu, timestamp, wrap, cari, simpan ke file** `Observasi · P0 · L`
   - Terima: mengikuti log 1.000 baris per detik tanpa membekukan UI; buffer dibatasi sesuai konfigurasi.
-- [ ] **D8S-013 — Shell ke container dengan TTY penuh** `Observasi · P0 · M`
+- [x] **D8S-013 — Shell ke container dengan TTY penuh** `Observasi · P0 · M`
   - Terima: TUI ditangguhkan dan pulih utuh saat keluar; resize diteruskan; jatuh ke `sh` bila `bash` tidak ada.
-- [ ] **D8S-016 — View image: daftar, riwayat layer, hapus, prune dangling, drill-down ke container pemakai** `Engine · P0 · M`
+- [x] **D8S-016 — View image: daftar, riwayat layer, hapus, prune dangling, drill-down ke container pemakai** `Engine · P0 · M`
   - Terima: image yang sedang dipakai ditandai; menghapusnya memberi peringatan yang jelas.
-- [ ] **D8S-020 — View context dan pindah konteks tanpa restart** `Koneksi · P0 · M`
+- [x] **D8S-020 — View context dan pindah konteks tanpa restart** `Koneksi · P0 · M`
   - Terima: semua watcher dan stream konteks lama ditutup; header menampilkan konteks baru.
-- [ ] **D8S-015 — Stats live: CPU, memori, jaringan, block IO sebagai kolom dan view detail** `Observasi · P1 · M`
+- [x] **D8S-015 — Stats live: CPU, memori, jaringan, block IO sebagai kolom dan view detail** `Observasi · P1 · M`
   - Terima: kolom bisa diurutkan; stream stats berhenti saat view ditutup.
-- [ ] **D8S-017 — View volume: daftar, pemakai, hapus, prune** `Engine · P1 · S`
+- [x] **D8S-017 — View volume: daftar, pemakai, hapus, prune** `Engine · P1 · S`
   - Terima: volume yang masih terpasang tidak bisa dihapus tanpa peringatan.
-- [ ] **D8S-018 — View network: daftar, container terhubung, hapus** `Engine · P1 · S`
+- [x] **D8S-018 — View network: daftar, container terhubung, hapus** `Engine · P1 · S`
   - Terima: `Enter` menampilkan container yang terhubung beserta alamat IP-nya.
-- [ ] **D8S-019 — View Compose project dari label, dengan start, stop, restart seluruh project** `Engine · P1 · M`
+- [x] **D8S-019 — View Compose project dari label, dengan start, stop, restart seluruh project** `Engine · P1 · M`
   - Terima: project terdeteksi tanpa membaca Compose file; `Enter` menampilkan container-nya.
-- [ ] **D8S-021 — Koneksi remote: TCP+TLS dan `ssh://`** `Koneksi · P1 · M`
+- [x] **D8S-021 — Koneksi remote: TCP+TLS dan `ssh://`** `Koneksi · P1 · M`
   - Terima: konteks SSH yang berfungsi di CLI `docker` juga berfungsi di d8s.
-- [ ] **D8S-022 — Multi-seleksi dengan `Space` dan aksi massal** `UX · P1 · M`
+- [x] **D8S-022 — Multi-seleksi dengan `Space` dan aksi massal** `UX · P1 · M`
   - Terima: konfirmasi menyebut jumlah dan nama resource yang terdampak.
-- [ ] **D8S-023 — View events live** `Observasi · P2 · S`
+- [x] **D8S-023 — View events live** `Observasi · P2 · S`
   - Terima: bisa difilter menurut tipe dan aksi.
-- [ ] **D8S-024 — View disk usage dan prune terpandu** `Engine · P2 · S`
+- [x] **D8S-024 — View disk usage dan prune terpandu** `Engine · P2 · S`
   - Terima: menampilkan ruang yang bisa dibebaskan sebelum pengguna mengonfirmasi.
 
 ### Build
@@ -155,29 +155,31 @@ make test lint      # harus hijau
 make build
 make test lint
 ./bin/d8s version   # v0.3.0
-make demo-up        # kini juga membuat volume, network, project Compose, dan container log deras, semuanya berawalan d8s-demo
+make demo-up        # project Compose d8s-demo: container web, idle, dan spam (log deras), network d8s-demo-net, volume d8s-demo-data
 ```
 
 ### Cek di VM dev
 
-Semua aksi di bawah dilakukan hanya pada resource `d8s-demo-*`.
+Semua aksi di bawah dilakukan hanya pada resource `d8s-demo*`. Ketik `/d8s-demo` dulu supaya hanya itu yang tampil.
 
-1. Pilih `d8s-demo-web`, tekan `r`. State berubah ke restarting lalu running, dan baris status melaporkan hasilnya.
-2. Tekan `d` padanya; isi inspect tampil. Ketik `/Mounts`; kursor melompat ke kecocokan. `Esc` kembali.
-3. Tekan `l` pada `d8s-demo-spam`. Log mengalir deras dan tombol tetap responsif. Nyalakan timestamp, cari satu kata, simpan ke file, lalu buka filenya.
-4. Tekan `s` pada `d8s-demo-web`; prompt shell muncul. Jalankan `ls`, ubah ukuran jendela, `exit`. Tabel d8s kembali utuh.
-5. Tekan `s` pada `d8s-demo-busybox` (tanpa bash); shell `sh` tetap terbuka.
-6. Kolom CPU dan MEM berubah tiap refresh. Sort menurut CPU; `d8s-demo-spam` naik ke atas.
-7. `:i` menampilkan image. `Enter` pada image demo menampilkan container pemakainya. `Ctrl-d` pada image yang dipakai memunculkan peringatan; batalkan.
-8. `:v` dan `:n` menampilkan volume dan network demo. `Enter` pada network demo menampilkan container beserta IP-nya.
-9. `:compose` menampilkan project `d8s-demo`. `Enter` menampilkan container-nya; `r` me-restart semuanya.
-10. Tandai dua container demo dengan `Space`, tekan `Ctrl-d`. Dialog menyebut keduanya; setelah disetujui keduanya hilang.
-11. `:ctx` menampilkan `default` dan `rootless`. Pindah ke `rootless`: header berganti dan tabel memuat isi daemon itu, atau pesan jelas bila daemon rootless sedang mati. Pindah kembali ke `default`.
-12. `:ev` terbuka; `docker restart d8s-demo-web` dari terminal lain memunculkan event-nya.
-13. `:df` menampilkan pemakaian disk per jenis. Prune terpandu menampilkan apa yang akan dihapus; **batalkan**, karena prune berlaku untuk seluruh daemon, bukan hanya resource demo.
+1. Pilih `d8s-demo-web`, tekan `r`. State berubah ke restarting lalu running, dan baris status melaporkan `Restart d8s-demo-web: done`. `x` menghentikan, `a` menyalakan lagi, `p` menjeda dan melanjutkan.
+2. Tekan `d` padanya; hasil inspect tampil sebagai JSON. Ketik `/Mounts` lalu `Enter`; tampilan melompat ke kecocokan dan judul menunjukkan `[1/n]`; `n` dan `Shift-n` berpindah antar kecocokan. `Esc` dua kali kembali ke tabel. `y` menampilkan objek yang sama sebagai YAML.
+3. Tekan `l` pada `d8s-demo-spam`. Log mengalir deras dan tombol tetap responsif. `t` menampilkan timestamp, `s` menjeda dan melanjutkan autoscroll, `/` mencari, `1` sampai `5` mengganti rentang waktu, `Ctrl-s` menyimpan ke `~/.local/state/d8s/dumps/`; buka filenya.
+4. Tekan `s` pada `d8s-demo-web`; prompt shell muncul. Jalankan `ls`, ubah ukuran jendela lalu `stty size` (angkanya mengikuti), `exit`. Tabel d8s kembali utuh dan tombol langsung berfungsi. Image demo tidak punya `bash`, jadi langkah ini sekaligus membuktikan jatuh ke `sh`.
+5. Kolom CPU% dan MEM berubah tiap refresh. `Shift-c` dua kali mengurutkan CPU menurun; `d8s-demo-spam` naik ke atas dengan sekitar 100%. `m` membuka halaman stats yang diperbarui tiap detik.
+6. `:i` menampilkan image; `/nginx` menyaring. `Enter` pada `nginx:alpine` menampilkan container pemakainya; `Esc` kembali. `h` menampilkan riwayat layer. `Ctrl-d` pada image yang dipakai memunculkan peringatan jumlah pemakainya; jawab `n`.
+7. `:v` lalu `/d8s` menampilkan `d8s-demo-data` beserta pemakainya. `:n` lalu `/d8s` menampilkan `d8s-demo-net`; `Enter` menampilkan ketiga container beserta IP-nya.
+8. `:compose` menampilkan project `d8s-demo` dengan `3/3`. `Enter` menampilkan container-nya; `Esc`, lalu `r` me-restart semuanya.
+9. Kembali ke `:c`, `/d8s-demo`. Tandai `d8s-demo-idle` dan `d8s-demo-spam` dengan `Space`, tekan `Ctrl-d`. Dialog menyebut `Delete 2 items` dan kedua namanya; setelah `y` keduanya hilang dan `d8s-demo-web` tetap ada.
+10. `:ctx` menampilkan `default` (bertanda `*`) dan `rootless`. `Enter` pada `rootless`: bila daemon rootless mati, muncul pesan socket tidak ditemukan dan koneksi tetap di `default`; bila hidup, header berganti dan tabel memuat isi daemon itu.
+11. `:ev` terbuka; `docker restart d8s-demo-web` dari terminal lain memunculkan event-nya di baris teratas.
+12. `:df` menampilkan pemakaian disk per jenis. `Ctrl-p` pada sebuah baris menampilkan apa yang akan dihapus dan berapa yang bisa dibebaskan; **jawab `n`**, karena prune berlaku untuk seluruh daemon, bukan hanya resource demo.
+13. `?` menampilkan semua tombol view aktif dalam kolom-kolom.
 14. `make demo-down`; semua resource demo hilang dari tabel dengan sendirinya.
 
-**Cek bersyarat:** koneksi `ssh://` (D8S-021) dicek dengan `docker context create d8s-ssh --docker host=ssh://puspensi@localhost`, bila sshd aktif di VM dan kunci SSH ke localhost tersedia. Bila tidak, story ini hanya terbukti lewat test.
+**Tidak bisa dicek di VM ini:** koneksi `ssh://` (D8S-021). sshd aktif, tetapi kunci SSH user ini tidak terdaftar di `authorized_keys` localhost, dan itu sengaja tidak diubah. Story ini terbukti lewat unit test (penyusunan perintah `ssh` dan transport lewat proses anak); cek sungguhan butuh host yang bisa di-SSH dengan kunci. Koneksi TCP+TLS juga hanya terbukti lewat test pembacaan sertifikat.
+
+**Catatan:** view container hasil drill-down (dari image, volume, network, atau project) belum memuat kolom CPU% dan MEM; kolom itu hanya ada di `:c`.
 
 ---
 

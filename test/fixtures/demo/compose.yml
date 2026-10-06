@@ -1,0 +1,32 @@
+# Resources for manual checks on a development machine. Everything is named
+# d8s-demo* so it can be told apart from, and removed without touching,
+# whatever else runs on the daemon.
+name: d8s-demo
+
+services:
+  web:
+    image: ${DEMO_IMAGE:-nginx:alpine}
+    container_name: d8s-demo-web
+    networks: [net]
+    volumes: [data:/data]
+
+  idle:
+    image: ${DEMO_IMAGE:-nginx:alpine}
+    container_name: d8s-demo-idle
+    command: ["sleep", "infinity"]
+    networks: [net]
+
+  # Writes a line roughly every millisecond, to exercise the log viewer.
+  spam:
+    image: ${DEMO_IMAGE:-nginx:alpine}
+    container_name: d8s-demo-spam
+    command: ["sh", "-c", "i=0; while true; do i=$$((i+1)); echo \"request $$i GET /item/$$i 200\"; done"]
+    networks: [net]
+
+networks:
+  net:
+    name: d8s-demo-net
+
+volumes:
+  data:
+    name: d8s-demo-data

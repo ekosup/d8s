@@ -26,14 +26,14 @@ func markHarness(t *testing.T) *harness {
 
 func TestSpaceMarksAndMovesDown(t *testing.T) {
 	h := markHarness(t)
-	h.app.key(tcell.KeyRune, ' ') // api, cursor -> db
+	h.app.key(tcell.KeyRune, ' ') // api, selection -> db
 	h.app.key(tcell.KeyRune, 'j') // -> web
-	h.app.key(tcell.KeyRune, ' ') // web, cursor -> worker
+	h.app.key(tcell.KeyRune, ' ') // web, selection -> worker
 	if got := ids(h.app.view.MarkedRows()); !slices.Equal(got, []string{"1", "3"}) {
 		t.Fatalf("marked: %v", got)
 	}
 	if got := h.app.view.SelectedID(); got != "4" {
-		t.Fatalf("cursor on %q", got)
+		t.Fatalf("selection on %q", got)
 	}
 	if s := h.screen(); !strings.Contains(s, "2 marked") {
 		t.Fatalf("mark count not shown:\n%s", s)
@@ -50,7 +50,7 @@ func TestBulkActionNamesEveryTarget(t *testing.T) {
 	h := markHarness(t)
 	h.app.key(tcell.KeyRune, ' ')
 	h.app.key(tcell.KeyRune, ' ')
-	h.app.key(tcell.KeyRune, ' ') // api, db, web marked; cursor on worker
+	h.app.key(tcell.KeyRune, ' ') // api, db, web marked; selection on worker
 	h.app.key(tcell.KeyCtrlD, 0)
 	s := h.screen()
 	if !strings.Contains(s, "Delete 3 items: api, db, web?") {

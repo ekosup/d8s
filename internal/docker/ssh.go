@@ -17,7 +17,7 @@ import (
 // sshArgs builds the ssh command line that reaches a remote daemon, the way
 // the docker CLI does it: ssh runs `docker system dial-stdio` on the far
 // side and the API travels over its stdin and stdout. Authentication is
-// whatever the user's ssh already does (keys, agent, ~/.ssh/config).
+// whatever the user's ssh already does (keys and ~/.ssh/config).
 func sshArgs(host string) ([]string, error) {
 	u, err := url.Parse(host)
 	if err != nil {
@@ -30,7 +30,7 @@ func sshArgs(host string) ([]string, error) {
 		return nil, fmt.Errorf("%q has no host", host)
 	}
 	if _, hasPassword := u.User.Password(); hasPassword {
-		return nil, errors.New("a password in an ssh address is not supported; use a key or an agent")
+		return nil, errors.New("a password in an ssh address is not supported; use key-based login")
 	}
 	args := []string{"-o", "ConnectTimeout=30", "-T"}
 	if user := u.User.Username(); user != "" {

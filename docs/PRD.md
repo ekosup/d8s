@@ -153,7 +153,12 @@ Baris dengan replika kurang dari yang diinginkan diberi warna peringatan; task g
 | `Ctrl-k` | Kill, dengan konfirmasi | Ya |
 | `Space` | Tandai baris | Ya |
 | `Shift` + huruf | Sort menurut kolom | Ya |
-| `r` | Restart container, atau force update service | Baru |
+| `n`, `Shift-n` | Kecocokan berikut dan sebelumnya di inspect dan log | Ya |
+| `a`, `x`, `r` | Start, stop, restart container; `r` juga force update service | Baru |
+| `p` | Pause atau resume container | Baru |
+| `m` | Halaman stats live | Baru |
+| `h` | Riwayat layer image | Baru |
+| `Ctrl-p` | Prune, dengan konfirmasi | Baru |
 | `S` | Scale service | Baru |
 | `u` | Rollback service ke spesifikasi sebelumnya | Baru |
 | `:q`, `Ctrl-c` | Keluar | Ya |
