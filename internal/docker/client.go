@@ -115,6 +115,7 @@ type Event struct {
 	Type   string
 	Action string
 	ID     string
+	Name   string // the object's name, when the daemon reports one
 	Time   time.Time
 }
 

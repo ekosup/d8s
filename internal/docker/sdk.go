@@ -479,6 +479,7 @@ func toEvent(m events.Message) Event {
 		Type:   string(m.Type),
 		Action: string(m.Action),
 		ID:     m.Actor.ID,
+		Name:   m.Actor.Attributes["name"],
 		Time:   time.Unix(0, m.TimeNano),
 	}
 }

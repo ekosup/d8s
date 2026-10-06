@@ -303,3 +303,12 @@ func (v *tableView) dropStaleMarks() {
 		}
 	}
 }
+
+// SetSort sets the order the table starts with.
+func (v *tableView) SetSort(col int, desc bool) {
+	if col < 0 || col >= len(v.model.cols) {
+		return
+	}
+	v.model.sortCol, v.model.sortDesc, v.model.dirty = col, desc, true
+	v.refresh()
+}

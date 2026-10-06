@@ -48,8 +48,11 @@ func run(args []string) error {
 		func() ([]docker.Endpoint, error) { return docker.ListContexts(os.Getenv) },
 		func() string { return app.Context() },
 	)
-	if err := registry.Register(contexts); err != nil {
-		return err
+	events := resource.Events(func() []docker.Event { return app.Events() }, time.Local)
+	for _, res := range []resource.Resource{contexts, events} {
+		if err := registry.Register(res); err != nil {
+			return err
+		}
 	}
 	home, err := registry.Lookup("containers")
 	if err != nil {

@@ -107,7 +107,7 @@ func run(ctx context.Context, client docker.Client, res resource.Resource, opts 
 				retry = time.After(opts.Retry)
 				continue
 			}
-			if slices.Contains(res.EventTypes, ev.Type) {
+			if slices.Contains(res.EventTypes, ev.Type) || slices.Contains(res.EventTypes, resource.AnyEvent) {
 				debounce.Reset(opts.Debounce)
 			}
 		case <-errs:

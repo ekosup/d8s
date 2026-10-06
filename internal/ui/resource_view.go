@@ -27,6 +27,7 @@ func (a *App) PushResource(res resource.Resource) {
 // the page is the visible one: resume starts it, pause and close stop it.
 func (a *App) resourcePage(res resource.Resource) *page {
 	view := newTableView(res.Title, res.Columns)
+	view.SetSort(res.SortColumn, res.SortDesc)
 	var cancel context.CancelFunc
 	stop := func() {
 		if cancel != nil {

@@ -96,6 +96,10 @@ type Resource struct {
 	// EventTypes lists the daemon event types that should trigger a refresh.
 	// Empty means the resource can only be polled.
 	EventTypes []string
+	// SortColumn and SortDesc are the order a view opens with. The zero
+	// values mean the first column, ascending.
+	SortColumn int
+	SortDesc   bool
 	List       func(ctx context.Context, c docker.Client) ([]Row, error)
 	Actions    []Action
 	// Inspect returns the object's full description as JSON. Nil means the

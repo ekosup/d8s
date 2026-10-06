@@ -83,6 +83,9 @@ type App struct {
 	nextPageID int
 	stop       func()
 
+	events       *store.EventLog // recent daemon events of the current connection
+	cancelEvents context.CancelFunc
+
 	logs      *logView // the log page currently open, if any
 	logBuffer int      // lines a log page keeps
 
@@ -161,6 +164,7 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	for _, o := range opts {
 		o(a)
 	}
+	a.startEventLog()
 
 	a.buildPrompt()
 	// Breadcrumbs take the width they need; messages get everything else.

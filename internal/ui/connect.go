@@ -6,6 +6,7 @@ import (
 
 	"github.com/ekosup/d8s/internal/action"
 	"github.com/ekosup/d8s/internal/docker"
+	"github.com/ekosup/d8s/internal/store"
 )
 
 // connectTimeout is generous because an ssh endpoint has to log in first.
@@ -50,6 +51,7 @@ func (a *App) adopt(client docker.Client, info docker.Info) {
 	a.client = client
 	a.executor = action.New(client, false)
 	a.info = info
+	a.startEventLog()
 	a.drawHeader()
 	if a.registry != nil {
 		if home, err := a.registry.Lookup(homeResource); err == nil {
@@ -67,7 +69,37 @@ const homeResource = "containers"
 // Close releases the current connection. Call it after Run returns.
 func (a *App) Close() {
 	a.stopWatch()
+	if a.cancelEvents != nil {
+		a.cancelEvents()
+	}
 	if a.client != nil {
 		_ = a.client.Close()
 	}
+}
+
+// eventLogSize is how many daemon events the events view can look back on.
+const eventLogSize = 500
+
+// startEventLog begins recording the current daemon's events, replacing
+// the log of a previous connection.
+func (a *App) startEventLog() {
+	if a.cancelEvents != nil {
+		a.cancelEvents()
+		a.cancelEvents = nil
+	}
+	a.events = store.NewEventLog(eventLogSize)
+	if a.client == nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancelEvents = cancel
+	go a.events.Run(ctx, a.client, store.DefaultRetry)
+}
+
+// Events returns the recorded events of the current daemon, oldest first.
+func (a *App) Events() []docker.Event {
+	if a.events == nil {
+		return nil
+	}
+	return a.events.Recent()
 }
