@@ -107,6 +107,8 @@ type App struct {
 	copy    func(data []byte) // puts text on the clipboard
 	screen  tcell.Screen      // the live screen, once drawing has started
 
+	aliases   map[string]string // user-defined commands: name -> "view" or "view /filter"
+	hotkeys   []binding         // user-defined keys that run a command
 	client    docker.Client
 	policyFor func(context string) Policy // what the user decided per context
 	policy    Policy                      // the one in force for the current connection
@@ -318,7 +320,7 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 		}
 		return nil
 	}
-	for _, b := range a.globalBindings() {
+	for _, b := range append(a.globalBindings(), a.hotkeys...) {
 		if b.matches(ev) {
 			b.do()
 			return nil

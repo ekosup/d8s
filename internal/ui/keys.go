@@ -43,11 +43,20 @@ func (b binding) matches(ev *tcell.EventKey) bool {
 // parseKey turns a key name from a resource definition ("r", "ctrl-d",
 // "enter", "space") into a binding without an action.
 func parseKey(name string) (binding, bool) {
+	if key, ok := functionKey(name); ok {
+		return binding{key: key, label: name}, true
+	}
 	switch {
 	case name == "enter":
 		return binding{key: tcell.KeyEnter, label: name}, true
 	case name == "space":
 		return binding{key: tcell.KeyRune, r: ' ', label: name}, true
+	case strings.HasPrefix(name, "shift-") && len(name) == len("shift-")+1:
+		c := name[len(name)-1]
+		if c < 'a' || c > 'z' {
+			return binding{}, false
+		}
+		return binding{key: tcell.KeyRune, r: rune(c - 'a' + 'A'), label: name}, true
 	case strings.HasPrefix(name, "ctrl-") && len(name) == len("ctrl-")+1:
 		c := name[len(name)-1]
 		if c < 'a' || c > 'z' {

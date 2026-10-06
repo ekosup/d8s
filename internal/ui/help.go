@@ -64,6 +64,9 @@ func (a *App) showHelp() {
 		keys = append(keys, helpSection{"NAVIGATION", tableNavigation})
 	}
 	keys = append(keys, helpSection{"GENERAL", entriesOf(a.globalBindings())})
+	if len(a.hotkeys) > 0 {
+		keys = append(keys, helpSection{groupHotkeys, entriesOf(a.hotkeys)})
+	}
 
 	// The commands flow into equal columns under one heading.
 	cmds := a.commandEntries()
@@ -102,6 +105,9 @@ func (a *App) commandEntries() []helpEntry {
 		for _, res := range a.registry.All() {
 			out = append(out, helpEntry{label: ":" + shortest(append([]string{res.Name}, res.Aliases...)), desc: res.Name})
 		}
+	}
+	for _, name := range sortedKeys(a.aliases) {
+		out = append(out, helpEntry{label: ":" + name, desc: a.aliases[name]})
 	}
 	builtins := a.commands()
 	slices.SortFunc(builtins, func(x, y command) int { return strings.Compare(x.names[0], y.names[0]) })

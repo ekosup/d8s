@@ -90,6 +90,12 @@ func (r *Registry) Complete(prefix string) []string {
 	return out
 }
 
+// Has reports whether cmd is exactly the name or an alias of a resource.
+func (r *Registry) Has(cmd string) bool {
+	_, ok := r.byCmd[strings.ToLower(strings.TrimSpace(cmd))]
+	return ok
+}
+
 // All returns every resource in the order it was registered.
 func (r *Registry) All() []Resource {
 	out := make([]Resource, 0, len(r.order))

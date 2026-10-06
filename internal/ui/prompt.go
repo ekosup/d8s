@@ -139,8 +139,25 @@ func (a *App) candidates(prefix string) []string {
 			out = append(out, c.names[0])
 		}
 	}
+	for name := range a.aliases {
+		if strings.HasPrefix(name, prefix) {
+			out = append(out, name)
+		}
+	}
 	slices.Sort(out)
 	return out
+}
+
+// runAlias runs a user-defined command: a view or command, optionally
+// followed by "/filter" to apply once the view is open.
+func (a *App) runAlias(target string) {
+	view, rest, _ := strings.Cut(strings.TrimSpace(target), " ")
+	a.runCommand(view)
+	if filter, ok := strings.CutPrefix(strings.TrimSpace(rest), "/"); ok && filter != "" {
+		if p := a.top(); p != nil && p.filter != nil {
+			p.filter.SetFilter(filter)
+		}
+	}
 }
 
 // completeCommand extends the typed text as far as the candidates agree.
@@ -170,6 +187,10 @@ func (a *App) runCommand(text string) {
 			c.do()
 			return
 		}
+	}
+	if target, ok := a.aliases[firstWord(cmd)]; ok {
+		a.runAlias(target)
+		return
 	}
 	if a.registry == nil {
 		a.Flash(flashError, fmt.Sprintf("unknown command %q", cmd))
