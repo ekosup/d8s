@@ -39,16 +39,44 @@ func openTTY() (terminal, error) {
 	return tty{f}, nil
 }
 
+// withFd runs f with the terminal's descriptor. It goes through
+// SyscallConn on purpose: File.Fd would switch the descriptor to blocking
+// mode, and then closing the file could no longer interrupt a pending
+// read. That read would survive the shell and swallow the first key typed
+// back in the TUI.
+func (t tty) withFd(f func(fd int) error) error {
+	conn, err := t.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var inner error
+	if err := conn.Control(func(fd uintptr) { inner = f(int(fd)) }); err != nil {
+		return err
+	}
+	return inner
+}
+
 func (t tty) MakeRaw() (func(), error) {
-	state, err := term.MakeRaw(int(t.Fd()))
+	var state *term.State
+	err := t.withFd(func(fd int) error {
+		var err error
+		state, err = term.MakeRaw(fd)
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("set terminal raw mode: %w", err)
 	}
-	return func() { _ = term.Restore(int(t.Fd()), state) }, nil
+	return func() {
+		_ = t.withFd(func(fd int) error { return term.Restore(fd, state) })
+	}, nil
 }
 
 func (t tty) Size() (rows, cols int, err error) {
-	cols, rows, err = term.GetSize(int(t.Fd()))
+	err = t.withFd(func(fd int) error {
+		var err error
+		cols, rows, err = term.GetSize(fd)
+		return err
+	})
 	return rows, cols, err
 }
 
