@@ -12,6 +12,12 @@ func Default(now func() time.Time) (*Registry, error) {
 		Networks(now),
 		Compose(now),
 		DiskUsage(),
+		Services(now),
+		Tasks(now),
+		Nodes(now),
+		Stacks(now),
+		Secrets(now),
+		Configs(now),
 	} {
 		if err := reg.Register(res); err != nil {
 			return nil, err

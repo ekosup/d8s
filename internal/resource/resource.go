@@ -71,10 +71,26 @@ type Action struct {
 	// Warn, when set, returns a caution to show in the confirmation for
 	// this particular row, or "" when there is nothing to warn about.
 	Warn func(row Row) string
+	// Input makes the action ask for a value first; RunInput then runs
+	// instead of Run and receives what was typed.
+	Input    *Input
+	RunInput func(ctx context.Context, c docker.Client, row Row, value string) error
+	// ConfirmName asks the user to type the row's name before running. It
+	// is for deletions that take a whole workload down.
+	ConfirmName bool
+	// Quiet suppresses the status message; for toggles whose effect is
+	// visible in the table itself.
+	Quiet bool
 	// Target makes the action global: it applies to Target (for example
 	// "dangling images") instead of the selected row, and Run gets an
 	// empty Row.
 	Target string
+}
+
+// Input describes the value an action asks for.
+type Input struct {
+	Label   string               // shown before the field
+	Default func(row Row) string // pre-filled value; may be nil
 }
 
 // TextPage is a read-only text view about one row, opened with a key.
@@ -96,6 +112,8 @@ type Resource struct {
 	// EventTypes lists the daemon event types that should trigger a refresh.
 	// Empty means the resource can only be polled.
 	EventTypes []string
+	// Swarm marks a resource that only a swarm manager can list.
+	Swarm bool
 	// SortColumn and SortDesc are the order a view opens with. The zero
 	// values mean the first column, ascending.
 	SortColumn int
