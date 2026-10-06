@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/ekosup/d8s/internal/docker"
+	"github.com/ekosup/d8s/internal/resource"
+	"github.com/ekosup/d8s/internal/ui"
 	"github.com/ekosup/d8s/internal/version"
 )
 
@@ -32,8 +34,18 @@ func run(args []string) error {
 	}
 	defer func() { _ = client.Close() }()
 
-	fmt.Printf("context: %s\nhost:    %s\nengine:  %s\napi:     %s\n", info.Context, info.Host, info.ServerVersion, info.APIVersion)
-	return nil
+	registry, err := resource.Default(time.Now)
+	if err != nil {
+		return err
+	}
+	home, err := registry.Lookup("containers")
+	if err != nil {
+		return err
+	}
+
+	app := ui.NewApp(info, ui.WithClient(client), ui.WithRegistry(registry))
+	app.ShowResource(home)
+	return app.Run()
 }
 
 func connect() (docker.Client, docker.Info, error) {

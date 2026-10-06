@@ -30,4 +30,12 @@ func init() {
 	tview.Styles.ContrastBackgroundColor = tcell.ColorDefault
 	tview.Styles.BorderColor = colorBorder
 	tview.Styles.TitleColor = colorTitle
+
+	// One border style whether focused or not; tview doubles it by default.
+	tview.Borders.HorizontalFocus = tview.Borders.Horizontal
+	tview.Borders.VerticalFocus = tview.Borders.Vertical
+	tview.Borders.TopLeftFocus = tview.Borders.TopLeft
+	tview.Borders.TopRightFocus = tview.Borders.TopRight
+	tview.Borders.BottomLeftFocus = tview.Borders.BottomLeft
+	tview.Borders.BottomRightFocus = tview.Borders.BottomRight
 }

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/rivo/tview"
 
 	"github.com/ekosup/d8s/internal/docker"
+	"github.com/ekosup/d8s/internal/resource"
+	"github.com/ekosup/d8s/internal/store"
 )
 
 type flashLevel int
@@ -43,10 +46,36 @@ type App struct {
 	info  docker.Info
 	stack []*page
 	stop  func()
+
+	client    docker.Client
+	registry  *resource.Registry
+	watchOpts store.Options
+	// queue runs f on the UI goroutine. Watchers use it to hand over results.
+	queue func(f func())
+
+	// The resource view currently shown, and the watcher feeding it. gen
+	// identifies the view so that late results of a closed one are dropped.
+	view        *tableView
+	gen         int
+	cancelWatch context.CancelFunc
+	watchDone   <-chan struct{}
+	stale       bool
 }
 
+// Option configures an App.
+type Option func(*App)
+
+// WithClient sets the Docker client resource views read from.
+func WithClient(c docker.Client) Option { return func(a *App) { a.client = c } }
+
+// WithRegistry sets the resources reachable from the application.
+func WithRegistry(r *resource.Registry) Option { return func(a *App) { a.registry = r } }
+
+// WithWatchOptions tunes how views are refreshed.
+func WithWatchOptions(o store.Options) Option { return func(a *App) { a.watchOpts = o } }
+
 // NewApp builds the shell for the daemon described by info.
-func NewApp(info docker.Info) *App {
+func NewApp(info docker.Info, opts ...Option) *App {
 	a := &App{
 		tv:     tview.NewApplication(),
 		header: tview.NewTextView().SetDynamicColors(true),
@@ -56,6 +85,10 @@ func NewApp(info docker.Info) *App {
 		info:   info,
 	}
 	a.stop = a.tv.Stop
+	a.queue = func(f func()) { a.tv.QueueUpdateDraw(f) }
+	for _, o := range opts {
+		o(a)
+	}
 
 	footer := tview.NewFlex().
 		AddItem(a.crumbs, 0, 1, false).
@@ -74,6 +107,7 @@ func NewApp(info docker.Info) *App {
 // Run starts the event loop and blocks until the application stops. The
 // terminal is restored on return, including after a panic.
 func (a *App) Run() error {
+	defer a.stopWatch()
 	return a.tv.Run()
 }
 
