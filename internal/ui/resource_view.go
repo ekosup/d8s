@@ -96,6 +96,9 @@ func (a *App) applySnapshot(gen int, view *tableView, s store.Snapshot) {
 		return // the view this belongs to has been closed
 	}
 	if s.Err != nil {
+		if !a.stale {
+			a.log.Warn("refresh failed", "error", errText(s.Err), "context", a.info.Context)
+		}
 		// Keep the last good rows on screen; they are better than nothing.
 		a.Flash(flashError, "refresh failed: "+s.Err.Error())
 		a.stale = true

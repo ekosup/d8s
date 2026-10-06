@@ -32,6 +32,11 @@ func (a *App) actionBindings(res resource.Resource, view *tableView) []binding {
 // startAction runs act on its targets, first asking whatever the action
 // requires: a value, the row's name typed out, or a plain yes.
 func (a *App) startAction(act resource.Action, view *tableView) {
+	// Refuse before asking anything: a confirmation for something that
+	// cannot happen would be misleading. The executor refuses as well.
+	if act.Mutates && a.refuseIfReadOnly(strings.ToLower(act.Name)) {
+		return
+	}
 	if act.Target != "" {
 		a.confirmAndRun(act, []resource.Row{{Cells: []string{act.Target}}}, view)
 		return
@@ -118,6 +123,7 @@ func (a *App) runAction(act resource.Action, rows []resource.Row) {
 	executor := a.executor
 	go func() {
 		err := executor.Run(context.Background(), act, rows)
+		a.log.Info("action", "name", act.Name, "targets", rowNames(rows), "context", a.info.Context, "error", errText(err))
 		a.queue(func() {
 			if top := a.top(); top != nil && top.resume != nil {
 				top.resume()
@@ -155,6 +161,13 @@ func allNames(rows []resource.Row) string {
 		names = append(names, r.Name())
 	}
 	return strings.Join(names, ", ")
+}
+
+func errText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return oneLine(err.Error())
 }
 
 func oneLine(s string) string {

@@ -81,7 +81,7 @@ func (a *App) openLogs(res resource.Resource, view *tableView) {
 	for _, r := range logRanges {
 		desc := "Last " + r.label
 		if r.since == 0 {
-			desc = fmt.Sprintf("Last %d lines", defaultLogTail)
+			desc = fmt.Sprintf("Last %d lines", a.logTail)
 		}
 		b := runeBinding(r.key, string(r.key), desc, func() { lv.start(r.since) })
 		b.noHint = true
@@ -104,7 +104,7 @@ func (lv *logView) start(since time.Duration) {
 	lv.cancel = cancel
 	opts := docker.LogOptions{Follow: true, Timestamps: true, Since: since}
 	if since == 0 {
-		opts.Tail = defaultLogTail
+		opts.Tail = lv.app.logTail
 	}
 	go lv.pump(ctx, gen, opts)
 }
@@ -221,7 +221,7 @@ func (lv *logView) toggleFollow() {
 }
 
 func (lv *logView) drawTitle() {
-	scope := fmt.Sprintf("last %d lines", defaultLogTail)
+	scope := fmt.Sprintf("last %d lines", lv.app.logTail)
 	if lv.since > 0 {
 		scope = "last " + shortDuration(lv.since)
 	}

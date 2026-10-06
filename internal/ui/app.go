@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,8 +90,11 @@ type App struct {
 	events       *store.EventLog // recent daemon events of the current connection
 	cancelEvents context.CancelFunc
 
-	logs      *logView // the log page currently open, if any
-	logBuffer int      // lines a log page keeps
+	logs         *logView // the log page currently open, if any
+	logBuffer    int      // lines a log page keeps
+	logTail      int      // lines fetched when a log page opens
+	shellCommand []string // what `s` runs in a container
+	log          *slog.Logger
 
 	// Seams for the shell: how to leave the TUI and reach the terminal.
 	suspend      func(f func()) bool
@@ -104,6 +108,8 @@ type App struct {
 	screen  tcell.Screen      // the live screen, once drawing has started
 
 	client    docker.Client
+	policyFor func(context string) Policy // what the user decided per context
+	policy    Policy                      // the one in force for the current connection
 	connect   Connector
 	contexts  func() ([]docker.Endpoint, error) // known Docker contexts, for offering a switch
 	input     *tview.InputField                 // the field of the dialog that is open, if any
@@ -153,6 +159,9 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	a.queue = func(f func()) { a.tv.QueueUpdateDraw(f) }
 	a.now = time.Now
 	a.logBuffer = defaultLogBuffer
+	a.logTail = defaultLogTail
+	a.shellCommand = shellCommand
+	a.log = slog.New(slog.DiscardHandler)
 	a.suspend = a.tv.Suspend
 	a.openTerminal = openTTY
 	a.resizePoll = 250 * time.Millisecond
@@ -169,6 +178,7 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	for _, o := range opts {
 		o(a)
 	}
+	a.applyPolicy()
 	a.startEventLog()
 
 	a.buildPrompt()
@@ -323,8 +333,12 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 func (a *App) drawHeader() {
 	a.header.Clear()
 
+	contextName := a.info.Context
+	if a.policy.Production {
+		contextName += " (production)"
+	}
 	info := [][2]string{
-		{"Context", a.info.Context},
+		{"Context", contextName},
 		{"Engine", a.info.ServerVersion},
 		{"API", a.info.APIVersion},
 	}
@@ -335,6 +349,9 @@ func (a *App) drawHeader() {
 		info = append(info, [2]string{"Swarm", "manager"})
 	case sw.Active:
 		info = append(info, [2]string{"Swarm", "worker"})
+	}
+	if a.policy.ReadOnly {
+		info = append(info, [2]string{"Mode", "READ-ONLY"})
 	}
 	labelWidth, infoWidth := 0, 0
 	for _, f := range info {
@@ -407,15 +424,20 @@ func (a *App) drawCrumbs() {
 	a.statusBar.ResizeItem(a.crumbs, tview.TaggedStringWidth(text)+1, 0)
 }
 
-// defaultDumpDir follows the XDG state directory convention.
-func defaultDumpDir() string {
-	base := os.Getenv("XDG_STATE_HOME")
+// StateDir is where d8s keeps what it writes on its own: saved logs and
+// remembered view settings. It follows the XDG state directory convention.
+func StateDir(getenv func(string) string) string {
+	base := getenv("XDG_STATE_HOME")
 	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return filepath.Join(os.TempDir(), "d8s", "dumps")
+		home := getenv("HOME")
+		if home == "" {
+			return filepath.Join(os.TempDir(), "d8s")
 		}
 		base = filepath.Join(home, ".local", "state")
 	}
-	return filepath.Join(base, "d8s", "dumps")
+	return filepath.Join(base, "d8s")
+}
+
+func defaultDumpDir() string {
+	return filepath.Join(StateDir(os.Getenv), "dumps")
 }

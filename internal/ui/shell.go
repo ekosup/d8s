@@ -87,6 +87,10 @@ func (a *App) openShell(res resource.Resource, view *tableView) {
 	if !ok || a.client == nil {
 		return
 	}
+	// A shell can change anything inside the container.
+	if a.refuseIfReadOnly("shell") {
+		return
+	}
 	var (
 		code int
 		err  error
@@ -94,7 +98,7 @@ func (a *App) openShell(res resource.Resource, view *tableView) {
 	ran := a.suspend(func() {
 		code, err = a.runShell(func(ctx context.Context, rows, cols uint) (docker.ExecSession, error) {
 			return res.Exec(ctx, a.client, row, docker.ExecOptions{
-				Cmd:  shellCommand,
+				Cmd:  a.shellCommand,
 				Env:  []string{"TERM=" + termName()},
 				Rows: rows,
 				Cols: cols,

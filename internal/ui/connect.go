@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/ekosup/d8s/internal/action"
@@ -41,6 +42,78 @@ func (a *App) contextNamed(name string) (docker.Endpoint, bool) {
 	return docker.Endpoint{}, false
 }
 
+// WithLogSettings sets how many lines a log page keeps and how many it
+// fetches when it opens. Values below one keep the defaults.
+func WithLogSettings(buffer, tail int) Option {
+	return func(a *App) {
+		if buffer > 0 {
+			a.logBuffer = buffer
+		}
+		if tail > 0 {
+			a.logTail = tail
+		}
+	}
+}
+
+// WithShell sets the command `s` runs in a container. Empty keeps the
+// default, which prefers bash and falls back to sh.
+func WithShell(command string) Option {
+	return func(a *App) {
+		if command != "" {
+			a.shellCommand = []string{command}
+		}
+	}
+}
+
+// WithLogger sends a record of what the application does to l.
+func WithLogger(l *slog.Logger) Option {
+	return func(a *App) {
+		if l != nil {
+			a.log = l
+		}
+	}
+}
+
+// Policy is what applies to the connection in use.
+type Policy struct {
+	ReadOnly   bool // every change is refused
+	Production bool // the context is marked as one to be careful with
+}
+
+// WithPolicy sets how the policy of a context is decided. It is asked again
+// whenever the connection changes.
+func WithPolicy(f func(context string) Policy) Option {
+	return func(a *App) { a.policyFor = f }
+}
+
+// setPolicy replaces the policy source and applies it to the current connection.
+func (a *App) setPolicy(f func(context string) Policy) {
+	a.policyFor = f
+	a.applyPolicy()
+	a.drawHeader()
+}
+
+// applyPolicy works out the policy for the current context and rebuilds
+// the executor with it, which is where read-only is enforced.
+func (a *App) applyPolicy() {
+	a.policy = Policy{}
+	if a.policyFor != nil {
+		a.policy = a.policyFor(a.info.Context)
+	}
+	if a.client != nil {
+		a.executor = action.New(a.client, a.policy.ReadOnly)
+	}
+}
+
+// refuseIfReadOnly says why and returns true when changes are not allowed.
+func (a *App) refuseIfReadOnly(what string) bool {
+	if !a.policy.ReadOnly {
+		return false
+	}
+	a.Flash(flashWarn, "read-only mode: "+what+" is disabled")
+	return true
+}
+
 // Context returns the name of the Docker context in use.
 func (a *App) Context() string { return a.info.Context }
 
@@ -55,6 +128,7 @@ func (a *App) switchTo(ep docker.Endpoint) {
 		ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
 		defer cancel()
 		client, info, err := a.connect(ctx, ep)
+		a.log.Info("switch context", "to", ep.Context, "host", ep.Host, "error", errText(err))
 		a.queue(func() {
 			if err != nil {
 				a.Flash(flashError, "connect to "+ep.Context+": "+oneLine(err.Error()))
@@ -72,8 +146,8 @@ func (a *App) adopt(client docker.Client, info docker.Info) {
 	a.stopWatch()
 	old := a.client
 	a.client = client
-	a.executor = action.New(client, false)
 	a.info = info
+	a.applyPolicy()
 	a.startEventLog()
 	a.drawHeader()
 	if a.registry != nil {
