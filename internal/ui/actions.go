@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
+	"github.com/ekosup/d8s/internal/docker"
 	"github.com/ekosup/d8s/internal/resource"
 )
 
@@ -27,21 +29,58 @@ func (a *App) actionBindings(res resource.Resource, view *tableView) []binding {
 	return out
 }
 
-// startAction runs act on the selected row, or on its fixed target for a
-// global action, asking first when it must.
+// startAction runs act on its targets, first asking whatever the action
+// requires: a value, the row's name typed out, or a plain yes.
 func (a *App) startAction(act resource.Action, view *tableView) {
-	var rows []resource.Row
 	if act.Target != "" {
-		rows = []resource.Row{{Cells: []string{act.Target}}}
-	} else {
-		if rows = view.MarkedRows(); len(rows) == 0 {
-			row, ok := view.SelectedRow()
-			if !ok {
-				return
+		a.confirmAndRun(act, []resource.Row{{Cells: []string{act.Target}}}, view)
+		return
+	}
+	row, ok := view.SelectedRow()
+	if !ok {
+		return
+	}
+	switch {
+	case act.Input != nil:
+		initial := ""
+		if act.Input.Default != nil {
+			initial = act.Input.Default(row)
+		}
+		a.ask(act.Name+" "+row.Name(), act.Input.Label, initial, func(value string) bool {
+			withValue := act
+			withValue.Run = func(ctx context.Context, c docker.Client, r resource.Row) error {
+				return act.RunInput(ctx, c, r, value)
 			}
+			a.runAction(withValue, []resource.Row{row})
+			return true
+		})
+	case act.ConfirmName:
+		// One object at a time: a typed name cannot stand for several.
+		question := act.Name + " " + row.Name()
+		if act.Warn != nil {
+			if w := act.Warn(row); w != "" {
+				question += "\n" + w
+			}
+		}
+		a.ask(question, "To confirm, type its name", "", func(value string) bool {
+			if strings.TrimSpace(value) != row.Name() {
+				a.Flash(flashError, "the name does not match; nothing was deleted")
+				return false
+			}
+			a.runAction(act, []resource.Row{row})
+			return true
+		})
+	default:
+		rows := view.MarkedRows()
+		if len(rows) == 0 {
 			rows = []resource.Row{row}
 		}
+		a.confirmAndRun(act, rows, view)
 	}
+}
+
+// confirmAndRun runs act on rows, after a yes/no question when it asks for one.
+func (a *App) confirmAndRun(act resource.Action, rows []resource.Row, view *tableView) {
 	run := func() {
 		a.runAction(act, rows)
 		view.ClearMarks()
@@ -67,20 +106,28 @@ func (a *App) startAction(act resource.Action, view *tableView) {
 }
 
 // runAction executes in the background so a slow daemon cannot freeze the
-// screen; the outcome comes back as a status message.
+// screen; the outcome comes back as a status message, and the view is
+// refreshed at once rather than at its next poll.
 func (a *App) runAction(act resource.Action, rows []resource.Row) {
 	if a.executor == nil {
 		return
 	}
-	a.Flash(flashInfo, fmt.Sprintf("%s %s…", act.Name, rowNames(rows)))
+	if !act.Quiet {
+		a.Flash(flashInfo, fmt.Sprintf("%s %s…", act.Name, rowNames(rows)))
+	}
+	executor := a.executor
 	go func() {
-		err := a.executor.Run(context.Background(), act, rows)
+		err := executor.Run(context.Background(), act, rows)
 		a.queue(func() {
-			if err != nil {
-				a.Flash(flashError, fmt.Sprintf("%s %s", act.Name, oneLine(err.Error())))
-				return
+			if top := a.top(); top != nil && top.resume != nil {
+				top.resume()
 			}
-			a.Flash(flashInfo, fmt.Sprintf("%s %s: done", act.Name, rowNames(rows)))
+			switch {
+			case err != nil:
+				a.Flash(flashError, fmt.Sprintf("%s %s", act.Name, oneLine(err.Error())))
+			case !act.Quiet:
+				a.Flash(flashInfo, fmt.Sprintf("%s %s: done", act.Name, rowNames(rows)))
+			}
 		})
 	}()
 }
@@ -148,4 +195,50 @@ func (a *App) confirm(question string, yes func()) {
 			}
 		},
 	})
+}
+
+const inputPage = "input"
+
+// ask shows a dialog with one text field. submit gets the text on Enter and
+// returns whether the dialog should close; Esc closes it without calling.
+func (a *App) ask(question, label, initial string, submit func(value string) bool) {
+	lines := strings.Split(question, "\n")
+	text := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
+	text.SetText(tview.Escape(question))
+
+	field := tview.NewInputField().
+		SetLabel(" " + label + ": ").
+		SetText(initial).
+		SetFieldStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite).Underline(true)).
+		SetLabelStyle(tcell.StyleDefault.Foreground(colorTitle))
+	field.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter && submit(field.GetText()) {
+			a.input = nil
+			a.Pop()
+		}
+	})
+	a.input = field
+
+	box := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(text, len(lines)+1, 0, false).
+		AddItem(field, 1, 0, true).
+		AddItem(tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter).
+			SetText("[steelblue]<enter>[-] ok   [steelblue]<esc>[-] cancel"), 2, 0, false)
+	box.SetBorder(true).SetTitle(" Input ").SetBorderColor(toneColors[resource.ToneWarn])
+
+	width := len(label) + 30
+	for _, l := range lines {
+		width = max(width, len(l)+8)
+	}
+	width = min(max(width, 50), 100)
+	dialog := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(box, width, 0, true).
+			AddItem(nil, 0, 1, false), len(lines)+6, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Push(&page{name: inputPage, prim: dialog, modal: true, typing: true, onClose: func() { a.input = nil }})
+	a.tv.SetFocus(field)
 }

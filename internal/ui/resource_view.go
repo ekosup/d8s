@@ -2,6 +2,9 @@ package ui
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/rivo/tview"
 
 	"github.com/ekosup/d8s/internal/resource"
 	"github.com/ekosup/d8s/internal/store"
@@ -13,19 +16,26 @@ func (a *App) ShowResource(res resource.Resource) {
 	a.stopWatch()
 	p := a.resourcePage(res)
 	a.resetStack(p)
-	p.resume()
+	if p.resume != nil {
+		p.resume()
+	}
 }
 
 // PushResource opens res on top of the current page, as a drill-down.
 func (a *App) PushResource(res resource.Resource) {
 	p := a.resourcePage(res)
 	a.Push(p)
-	p.resume()
+	if p.resume != nil {
+		p.resume()
+	}
 }
 
 // resourcePage builds the table page for res. Its watcher runs only while
 // the page is the visible one: resume starts it, pause and close stop it.
 func (a *App) resourcePage(res resource.Resource) *page {
+	if res.Swarm && !a.info.Swarm.Manager {
+		return a.notManagerPage(res)
+	}
 	view := newTableView(res.Title, res.Columns)
 	view.SetSort(res.SortColumn, res.SortDesc)
 	var cancel context.CancelFunc
@@ -115,4 +125,18 @@ func (a *App) resetStack(root *page) {
 		}
 	}
 	a.tv.SetFocus(root.prim)
+}
+
+// notManagerPage stands in for a swarm view when the connected daemon
+// cannot serve it, and says why instead of showing the daemon's error.
+func (a *App) notManagerPage(res resource.Resource) *page {
+	reason := "This engine is not part of a swarm."
+	if a.info.Swarm.Active {
+		reason = "This engine is a swarm worker; only a manager can answer for the cluster."
+	}
+	text := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	text.SetText(fmt.Sprintf("\n\n[yellow]%s[-]\n\n%s needs a connection to a swarm manager.\nPick one with [steelblue]:ctx[-], or go back with [steelblue]:c[-].",
+		reason, tview.Escape(res.Title)))
+	text.SetBorder(true).SetTitle(" " + tview.Escape(res.Title) + " ")
+	return &page{name: res.Name, prim: text}
 }

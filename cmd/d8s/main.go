@@ -59,7 +59,8 @@ func run(args []string) error {
 		return err
 	}
 
-	app = ui.NewApp(info, ui.WithClient(client), ui.WithRegistry(registry), ui.WithConnector(connect))
+	listContexts := func() ([]docker.Endpoint, error) { return docker.ListContexts(os.Getenv) }
+	app = ui.NewApp(info, ui.WithClient(client), ui.WithRegistry(registry), ui.WithConnector(connect), ui.WithContexts(listContexts))
 	defer app.Close()
 	app.ShowResource(home)
 	return app.Run()

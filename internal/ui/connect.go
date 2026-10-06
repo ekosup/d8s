@@ -18,6 +18,29 @@ type Connector func(ctx context.Context, ep docker.Endpoint) (docker.Client, doc
 // WithConnector lets the application switch daemons at run time.
 func WithConnector(c Connector) Option { return func(a *App) { a.connect = c } }
 
+// WithContexts tells the application which Docker contexts exist, so it can
+// offer to switch to the one that reaches a particular node.
+func WithContexts(list func() ([]docker.Endpoint, error)) Option {
+	return func(a *App) { a.contexts = list }
+}
+
+// contextNamed finds a known context by name.
+func (a *App) contextNamed(name string) (docker.Endpoint, bool) {
+	if a.contexts == nil || name == "" {
+		return docker.Endpoint{}, false
+	}
+	eps, err := a.contexts()
+	if err != nil {
+		return docker.Endpoint{}, false
+	}
+	for _, ep := range eps {
+		if ep.Context == name {
+			return ep, true
+		}
+	}
+	return docker.Endpoint{}, false
+}
+
 // Context returns the name of the Docker context in use.
 func (a *App) Context() string { return a.info.Context }
 

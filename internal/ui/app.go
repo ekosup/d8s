@@ -54,6 +54,9 @@ type page struct {
 	// modal pages take every key: nothing reaches the pages below or the
 	// global bindings, except Esc (close) and Ctrl-C (quit).
 	modal bool
+	// typing marks a modal page with a text field: keys it does not bind
+	// go to the field instead of being dropped.
+	typing bool
 }
 
 // filterer is anything the `/` prompt can narrow down or search.
@@ -102,6 +105,8 @@ type App struct {
 
 	client    docker.Client
 	connect   Connector
+	contexts  func() ([]docker.Endpoint, error) // known Docker contexts, for offering a switch
+	input     *tview.InputField                 // the field of the dialog that is open, if any
 	executor  *action.Executor
 	registry  *resource.Registry
 	watchOpts store.Options
@@ -293,8 +298,13 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 		switch ev.Key() {
 		case tcell.KeyEscape:
 			a.Pop()
+			return nil
 		case tcell.KeyCtrlC:
 			a.stop()
+			return nil
+		}
+		if p.typing {
+			return ev
 		}
 		return nil
 	}
@@ -311,11 +321,20 @@ func (a *App) drawHeader() {
 	field := func(k, v string) string {
 		return fmt.Sprintf("[aqua]%s:[white] %s", k, tview.Escape(v))
 	}
-	line1 := " " + strings.Join([]string{
+	fields := []string{
 		field("Context", a.info.Context),
 		field("Engine", a.info.ServerVersion),
 		field("API", a.info.APIVersion),
-	}, "   ")
+	}
+	switch sw := a.info.Swarm; {
+	case sw.Manager && sw.Leader:
+		fields = append(fields, field("Swarm", "manager (leader)"))
+	case sw.Manager:
+		fields = append(fields, field("Swarm", "manager"))
+	case sw.Active:
+		fields = append(fields, field("Swarm", "worker"))
+	}
+	line1 := " " + strings.Join(fields, "   ")
 
 	hintLine := func(bs []binding) string {
 		parts := make([]string, 0, len(bs))

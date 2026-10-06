@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/term"
@@ -72,9 +73,19 @@ func (a *App) openShell(res resource.Resource, view *tableView) {
 			})
 		})
 	})
+	var other *docker.ErrOtherNode
 	switch {
 	case !ran:
 		a.Flash(flashError, "shell: cannot suspend the screen")
+	case errors.As(err, &other):
+		// Exec cannot cross nodes. Say so, and offer the way there when a
+		// context for that node is known.
+		reason := strings.ToUpper(err.Error()[:1]) + err.Error()[1:] + "."
+		if ep, ok := a.contextNamed(other.Node); ok {
+			a.confirm(reason+"\nSwitch to context "+ep.Context+"?", func() { a.switchTo(ep) })
+		} else {
+			a.Flash(flashWarn, reason)
+		}
 	case err != nil:
 		a.Flash(flashError, "shell on "+row.Name()+": "+oneLine(err.Error()))
 	case code != 0:
