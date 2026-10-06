@@ -49,6 +49,9 @@ func (a *App) resourcePage(res resource.Resource) *page {
 	}
 
 	actions := append(a.capabilityBindings(res, view), a.actionBindings(res, view)...)
+	if len(res.Actions) > 0 {
+		actions = append(actions, runeBinding(' ', "space", "Mark", view.toggleMark))
+	}
 	return &page{
 		name: res.Name,
 		prim: view,
@@ -62,11 +65,11 @@ func (a *App) resourcePage(res resource.Resource) *page {
 		resume:  start,
 		onClose: stop,
 		back: func() bool {
-			if view.Filter() == "" {
-				return false
+			if view.Filter() != "" {
+				view.SetFilter("")
+				return true
 			}
-			view.SetFilter("")
-			return true
+			return view.ClearMarks()
 		},
 	}
 }

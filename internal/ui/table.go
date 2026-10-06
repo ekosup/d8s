@@ -19,6 +19,8 @@ type tableView struct {
 	shown    []resource.Row // rows currently on screen, in order
 	sortKeys []columnKey
 
+	marks map[string]bool // IDs the user marked for a bulk action
+
 	natural  []int // width each column wants, from the last refresh
 	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
 }
@@ -33,6 +35,7 @@ func newTableView(title string, cols []resource.Column) *tableView {
 		Table: tview.NewTable(),
 		title: title,
 		model: newTableModel(cols),
+		marks: map[string]bool{},
 	}
 	v.SetBorder(true)
 	v.SetFixed(1, 0)
@@ -128,6 +131,9 @@ func (v *tableView) refresh() {
 	target := 0
 	for i, r := range rows {
 		color := toneColors[r.Tone]
+		if v.marks[r.ID] {
+			color = colorMark
+		}
 		for c, col := range v.model.cols {
 			text := ""
 			if c < len(r.Cells) {
@@ -144,6 +150,7 @@ func (v *tableView) refresh() {
 		}
 	}
 	v.shown = rows
+	v.dropStaleMarks()
 	v.measure()
 
 	switch {
@@ -161,10 +168,14 @@ func (v *tableView) refresh() {
 
 func (v *tableView) titleText() string {
 	total := v.model.Total()
+	t := fmt.Sprintf(" %s[%d] ", v.title, total)
 	if f := v.model.FilterText(); f != "" {
-		return fmt.Sprintf(" %s[%d/%d] </%s> ", v.title, len(v.shown), total, tview.Escape(f))
+		t = fmt.Sprintf(" %s[%d/%d] </%s> ", v.title, len(v.shown), total, tview.Escape(f))
 	}
-	return fmt.Sprintf(" %s[%d] ", v.title, total)
+	if n := len(v.marks); n > 0 {
+		t += fmt.Sprintf("(%d marked) ", n)
+	}
+	return t
 }
 
 // minColumnWidth is how far a column may be squeezed; below this a value is
@@ -235,4 +246,60 @@ func (v *tableView) SelectedRow() (resource.Row, bool) {
 		return v.shown[i], true
 	}
 	return resource.Row{}, false
+}
+
+// toggleMark marks or unmarks the highlighted row and moves down, so that
+// holding space marks a run of rows.
+func (v *tableView) toggleMark() {
+	row, ok := v.SelectedRow()
+	if !ok {
+		return
+	}
+	if v.marks[row.ID] {
+		delete(v.marks, row.ID)
+	} else {
+		v.marks[row.ID] = true
+	}
+	if r, _ := v.GetSelection(); r < len(v.shown) {
+		v.Select(r+1, 0)
+	}
+	v.refresh()
+}
+
+// MarkedRows returns the marked rows that are currently visible, in table
+// order. Rows hidden by a filter are never acted on.
+func (v *tableView) MarkedRows() []resource.Row {
+	var out []resource.Row
+	for _, r := range v.shown {
+		if v.marks[r.ID] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// ClearMarks unmarks everything and reports whether anything was marked.
+func (v *tableView) ClearMarks() bool {
+	if len(v.marks) == 0 {
+		return false
+	}
+	clear(v.marks)
+	v.refresh()
+	return true
+}
+
+// dropStaleMarks forgets marks on objects that no longer exist.
+func (v *tableView) dropStaleMarks() {
+	if len(v.marks) == 0 {
+		return
+	}
+	alive := make(map[string]bool, v.model.Total())
+	for _, r := range v.model.rows {
+		alive[r.ID] = true
+	}
+	for id := range v.marks {
+		if !alive[id] {
+			delete(v.marks, id)
+		}
+	}
 }

@@ -34,17 +34,27 @@ func (a *App) startAction(act resource.Action, view *tableView) {
 	if act.Target != "" {
 		rows = []resource.Row{{Cells: []string{act.Target}}}
 	} else {
-		row, ok := view.SelectedRow()
-		if !ok {
-			return
+		if rows = view.MarkedRows(); len(rows) == 0 {
+			row, ok := view.SelectedRow()
+			if !ok {
+				return
+			}
+			rows = []resource.Row{row}
 		}
-		rows = []resource.Row{row}
+	}
+	run := func() {
+		a.runAction(act, rows)
+		view.ClearMarks()
 	}
 	if !act.Confirm {
-		a.runAction(act, rows)
+		run()
 		return
 	}
 	question := fmt.Sprintf("%s %s?", act.Name, rowNames(rows))
+	if len(rows) > 1 {
+		// Before destroying several things, name every one of them.
+		question = fmt.Sprintf("%s %d items: %s?", act.Name, len(rows), allNames(rows))
+	}
 	if act.Warn != nil {
 		for _, r := range rows {
 			if w := act.Warn(r); w != "" {
@@ -53,7 +63,7 @@ func (a *App) startAction(act resource.Action, view *tableView) {
 			}
 		}
 	}
-	a.confirm(question, func() { a.runAction(act, rows) })
+	a.confirm(question, run)
 }
 
 // runAction executes in the background so a slow daemon cannot freeze the
@@ -82,6 +92,20 @@ func rowNames(rows []resource.Row) string {
 	names := make([]string, len(rows))
 	for i, r := range rows {
 		names[i] = r.Name()
+	}
+	return strings.Join(names, ", ")
+}
+
+// allNames lists every row, up to a number that still fits a dialog.
+func allNames(rows []resource.Row) string {
+	const limit = 12
+	names := make([]string, 0, min(len(rows), limit)+1)
+	for i, r := range rows {
+		if i == limit {
+			names = append(names, fmt.Sprintf("and %d more", len(rows)-limit))
+			break
+		}
+		names = append(names, r.Name())
 	}
 	return strings.Join(names, ", ")
 }

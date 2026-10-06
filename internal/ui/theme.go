@@ -14,6 +14,7 @@ var (
 	colorTitle    = tcell.ColorAqua
 	colorSelectBg = tcell.ColorAqua
 	colorSelectFg = tcell.ColorBlack
+	colorMark     = tcell.ColorDarkOrange
 
 	toneColors = map[resource.Tone]tcell.Color{
 		resource.ToneNormal: tcell.ColorLightSkyBlue,
