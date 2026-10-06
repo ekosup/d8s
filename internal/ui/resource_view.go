@@ -65,9 +65,14 @@ func (a *App) stopWatch() {
 
 // resetStack replaces every page with root.
 func (a *App) resetStack(root *page) {
-	for i := range a.stack {
-		a.pages.RemovePage(a.pageID(i))
-	}
+	old := a.stack
 	a.stack = nil
+	// Add the new page before removing the old ones: a Pages container that
+	// is emptied while focused keeps that focus for itself, and would then
+	// swallow every key meant for the prompt.
 	a.Push(root)
+	for _, p := range old {
+		a.pages.RemovePage(p.id)
+	}
+	a.tv.SetFocus(root.prim)
 }

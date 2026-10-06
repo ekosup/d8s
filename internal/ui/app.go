@@ -23,6 +23,7 @@ const (
 
 // page is one entry on the navigation stack.
 type page struct {
+	id   string // unique within the app, assigned by Push
 	name string
 	prim tview.Primitive
 	// bindings returns the keys this page handles; they take precedence
@@ -50,9 +51,10 @@ type App struct {
 
 	prompting promptMode
 
-	info  docker.Info
-	stack []*page
-	stop  func()
+	info       docker.Info
+	stack      []*page
+	nextPageID int
+	stop       func()
 
 	client    docker.Client
 	registry  *resource.Registry
@@ -125,8 +127,10 @@ func (a *App) Run() error {
 
 // Push shows p on top of the current page.
 func (a *App) Push(p *page) {
+	a.nextPageID++
+	p.id = fmt.Sprintf("page-%d", a.nextPageID)
 	a.stack = append(a.stack, p)
-	a.pages.AddPage(a.pageID(len(a.stack)-1), p.prim, true, true)
+	a.pages.AddPage(p.id, p.prim, true, true)
 	a.tv.SetFocus(p.prim)
 	a.drawCrumbs()
 }
@@ -137,16 +141,12 @@ func (a *App) Pop() bool {
 		return false
 	}
 	last := len(a.stack) - 1
-	a.pages.RemovePage(a.pageID(last))
+	a.pages.RemovePage(a.stack[last].id)
 	a.stack = a.stack[:last]
-	top := a.stack[last-1]
-	a.pages.SwitchToPage(a.pageID(last - 1))
-	a.tv.SetFocus(top.prim)
+	a.tv.SetFocus(a.stack[last-1].prim)
 	a.drawCrumbs()
 	return true
 }
-
-func (a *App) pageID(i int) string { return fmt.Sprintf("page-%d", i) }
 
 func (a *App) top() *page {
 	if len(a.stack) == 0 {

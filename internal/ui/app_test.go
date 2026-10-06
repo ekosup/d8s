@@ -23,10 +23,10 @@ func (a *App) key(k tcell.Key, r rune) {
 	if ev == nil {
 		return
 	}
-	if p := a.tv.GetFocus(); p != nil {
-		if h := p.InputHandler(); h != nil {
-			h(ev, func(p tview.Primitive) { a.tv.SetFocus(p) })
-		}
+	// Like tview's event loop: the root passes the key down to whichever
+	// child reports having focus.
+	if h := a.root.InputHandler(); h != nil {
+		h(ev, func(p tview.Primitive) { a.tv.SetFocus(p) })
 	}
 }
 

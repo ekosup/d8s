@@ -169,3 +169,25 @@ func TestTypingInPromptDoesNotTriggerViewKeys(t *testing.T) {
 		t.Fatal("keys typed into the prompt reached the view")
 	}
 }
+
+func TestPromptWorksAgainAfterSwitchingViews(t *testing.T) {
+	h := promptHarness(t)
+	h.command("containers")
+	h.step()
+
+	h.app.key(tcell.KeyRune, ':')
+	h.app.typeText("xyz")
+	if got := h.app.prompt.GetText(); got != "xyz" {
+		t.Fatalf("prompt text %q after switching views; keys are not reaching the prompt", got)
+	}
+	h.app.key(tcell.KeyEnter, 0)
+	if s := h.screen(); !strings.Contains(s, `unknown command "xyz"`) {
+		t.Fatalf("command not run:\n%s", s)
+	}
+
+	// The table still gets its keys afterwards.
+	h.app.key(tcell.KeyRune, '?')
+	if !strings.Contains(h.screen(), "<containers> <help>") {
+		t.Fatal("keys no longer reach the page")
+	}
+}
