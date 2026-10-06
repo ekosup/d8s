@@ -18,6 +18,9 @@ type tableView struct {
 	model    *tableModel
 	shown    []resource.Row // rows currently on screen, in order
 	sortKeys []columnKey
+
+	natural  []int // width each column wants, from the last refresh
+	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
 }
 
 type columnKey struct {
@@ -139,6 +142,7 @@ func (v *tableView) refresh() {
 		}
 	}
 	v.shown = rows
+	v.measure()
 
 	switch {
 	case len(rows) == 0:
@@ -159,4 +163,65 @@ func (v *tableView) titleText() string {
 		return fmt.Sprintf(" %s[%d/%d] </%s> ", v.title, len(v.shown), total, tview.Escape(f))
 	}
 	return fmt.Sprintf(" %s[%d] ", v.title, total)
+}
+
+// minColumnWidth is how far a column may be squeezed; below this a value is
+// no longer recognisable.
+const minColumnWidth = 8
+
+// measure records the width every column needs to show its text in full.
+func (v *tableView) measure() {
+	v.natural = make([]int, len(v.model.cols))
+	for r := range v.GetRowCount() {
+		for c := range v.natural {
+			v.natural[c] = max(v.natural[c], tview.TaggedStringWidth(v.GetCell(r, c).Text))
+		}
+	}
+	v.fitWidth = -1
+}
+
+// Draw fits the columns to the available width first, so that a long value
+// in one column never pushes the columns after it off the screen.
+func (v *tableView) Draw(screen tcell.Screen) {
+	if _, _, width, _ := v.GetInnerRect(); width != v.fitWidth {
+		v.fit(width)
+	}
+	v.Table.Draw(screen)
+}
+
+// fit shortens the widest columns, one character at a time, until the table
+// is no wider than width. Columns that already fit are left alone.
+func (v *tableView) fit(width int) {
+	v.fitWidth = width
+	widths := append([]int(nil), v.natural...)
+	total := max(len(widths)-1, 0) // one separator between columns
+	for _, w := range widths {
+		total += w
+	}
+	for total > width {
+		// The first column identifies the row, so it is squeezed last.
+		widest := -1
+		for c, w := range widths {
+			if c > 0 && w > minColumnWidth && (widest < 0 || w > widths[widest]) {
+				widest = c
+			}
+		}
+		if widest < 0 && len(widths) > 0 && widths[0] > minColumnWidth {
+			widest = 0
+		}
+		if widest < 0 {
+			break // nothing left to squeeze; the terminal is simply too small
+		}
+		widths[widest]--
+		total--
+	}
+	for c, w := range widths {
+		limit := 0 // no limit
+		if w < v.natural[c] {
+			limit = w
+		}
+		for r := range v.GetRowCount() {
+			v.GetCell(r, c).SetMaxWidth(limit)
+		}
+	}
 }
