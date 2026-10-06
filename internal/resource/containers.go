@@ -44,6 +44,9 @@ func Containers(now func() time.Time) Resource {
 		Logs: func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error) {
 			return c.ContainerLogs(ctx, row.ID, opts)
 		},
+		Exec: func(ctx context.Context, c docker.Client, row Row, opts docker.ExecOptions) (docker.ExecSession, error) {
+			return c.Exec(ctx, row.ID, opts)
+		},
 	}
 }
 

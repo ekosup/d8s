@@ -29,6 +29,9 @@ func (a *App) capabilityBindings(res resource.Resource, view *tableView) []bindi
 	if res.Logs != nil {
 		out = append(out, runeBinding('l', "l", "Logs", func() { a.openLogs(res, view) }))
 	}
+	if res.Exec != nil {
+		out = append(out, runeBinding('s', "s", "Shell", func() { a.openShell(res, view) }))
+	}
 	return out
 }
 

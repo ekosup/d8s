@@ -81,6 +81,11 @@ type App struct {
 	logs      *logView // the log page currently open, if any
 	logBuffer int      // lines a log page keeps
 
+	// Seams for the shell: how to leave the TUI and reach the terminal.
+	suspend      func(f func()) bool
+	openTerminal func() (terminal, error)
+	resizePoll   time.Duration
+
 	// Seams for the pager's side effects.
 	dumpDir string            // where ctrl-s saves
 	now     func() time.Time  // names saved files
@@ -134,6 +139,9 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	a.queue = func(f func()) { a.tv.QueueUpdateDraw(f) }
 	a.now = time.Now
 	a.logBuffer = defaultLogBuffer
+	a.suspend = a.tv.Suspend
+	a.openTerminal = openTTY
+	a.resizePoll = 250 * time.Millisecond
 	a.dumpDir = defaultDumpDir()
 	a.tv.SetBeforeDrawFunc(func(s tcell.Screen) bool {
 		a.screen = s

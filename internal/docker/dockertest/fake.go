@@ -2,6 +2,7 @@
 package dockertest
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"sync"
@@ -28,6 +29,10 @@ type Fake struct {
 	logErr     error
 	logOpts    docker.LogOptions
 	logStreams map[*logStream]struct{}
+
+	execs    []*FakeExec
+	execErr  error
+	execCode int
 }
 
 type logStream struct {
@@ -244,6 +249,114 @@ func (f *Fake) OpenLogStreams() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.logStreams)
+}
+
+// FakeExec is an exec session served by the fake. It echoes every input
+// line as "echo: <line>" and ends when it reads the line "exit".
+type FakeExec struct {
+	ID         string
+	Cmd        []string
+	Env        []string
+	Rows, Cols uint
+
+	mu      sync.Mutex
+	input   []byte
+	pending []byte // input not yet terminated by a newline
+	resizes [][2]uint
+	code    int
+	outR    *io.PipeReader
+	outW    *io.PipeWriter
+}
+
+func (e *FakeExec) Read(p []byte) (int, error) { return e.outR.Read(p) }
+
+func (e *FakeExec) Write(p []byte) (int, error) {
+	e.mu.Lock()
+	e.input = append(e.input, p...)
+	e.pending = append(e.pending, p...)
+	var lines []string
+	for {
+		i := bytes.IndexByte(e.pending, '\n')
+		if i < 0 {
+			break
+		}
+		lines = append(lines, string(e.pending[:i]))
+		e.pending = e.pending[i+1:]
+	}
+	e.mu.Unlock()
+	for _, l := range lines {
+		if l == "exit" {
+			_ = e.outW.Close()
+			break
+		}
+		_, _ = io.WriteString(e.outW, "echo: "+l+"\r\n")
+	}
+	return len(p), nil
+}
+
+// Close implements io.Closer.
+func (e *FakeExec) Close() error {
+	_ = e.outW.Close()
+	return e.outR.Close()
+}
+
+// Resize implements docker.ExecSession.
+func (e *FakeExec) Resize(_ context.Context, rows, cols uint) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.resizes = append(e.resizes, [2]uint{rows, cols})
+	return nil
+}
+
+// ExitCode implements docker.ExecSession.
+func (e *FakeExec) ExitCode(context.Context) (int, error) { return e.code, nil }
+
+// Input returns everything written to the session.
+func (e *FakeExec) Input() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return string(e.input)
+}
+
+// Resizes returns the sizes the session was resized to.
+func (e *FakeExec) Resizes() [][2]uint {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([][2]uint(nil), e.resizes...)
+}
+
+// Exec implements docker.Client.
+func (f *Fake) Exec(_ context.Context, id string, opts docker.ExecOptions) (docker.ExecSession, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.execErr != nil {
+		return nil, f.execErr
+	}
+	pr, pw := io.Pipe()
+	e := &FakeExec{ID: id, Cmd: opts.Cmd, Env: opts.Env, Rows: opts.Rows, Cols: opts.Cols, code: f.execCode, outR: pr, outW: pw}
+	f.execs = append(f.execs, e)
+	return e, nil
+}
+
+// Execs returns the exec sessions started so far.
+func (f *Fake) Execs() []*FakeExec {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]*FakeExec(nil), f.execs...)
+}
+
+// SetExecError makes Exec fail with err; nil restores it.
+func (f *Fake) SetExecError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.execErr = err
+}
+
+// SetExecExitCode sets the exit code of sessions started from now on.
+func (f *Fake) SetExecExitCode(code int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.execCode = code
 }
 
 // Inspect implements docker.Client.

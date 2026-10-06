@@ -153,6 +153,56 @@ func (p *pipeCloser) Close() error {
 	return p.PipeReader.Close()
 }
 
+func (c *sdkClient) Exec(ctx context.Context, id string, opts ExecOptions) (ExecSession, error) {
+	size := client.ConsoleSize{Height: opts.Rows, Width: opts.Cols}
+	created, err := c.cli.ExecCreate(ctx, id, client.ExecCreateOptions{
+		TTY:          true,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		ConsoleSize:  size,
+		Env:          opts.Env,
+		Cmd:          opts.Cmd,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create exec: %w", err)
+	}
+	att, err := c.cli.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true, ConsoleSize: size})
+	if err != nil {
+		return nil, fmt.Errorf("attach exec: %w", err)
+	}
+	return &execSession{cli: c.cli, id: created.ID, att: att}, nil
+}
+
+type execSession struct {
+	cli *client.Client
+	id  string
+	att client.ExecAttachResult
+}
+
+func (e *execSession) Read(p []byte) (int, error)  { return e.att.Reader.Read(p) }
+func (e *execSession) Write(p []byte) (int, error) { return e.att.Conn.Write(p) }
+
+func (e *execSession) Close() error {
+	e.att.Close()
+	return nil
+}
+
+func (e *execSession) Resize(ctx context.Context, rows, cols uint) error {
+	if _, err := e.cli.ExecResize(ctx, e.id, client.ExecResizeOptions{Height: rows, Width: cols}); err != nil {
+		return fmt.Errorf("resize exec: %w", err)
+	}
+	return nil
+}
+
+func (e *execSession) ExitCode(ctx context.Context) (int, error) {
+	res, err := e.cli.ExecInspect(ctx, e.id, client.ExecInspectOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("inspect exec: %w", err)
+	}
+	return res.ExitCode, nil
+}
+
 func (c *sdkClient) Inspect(ctx context.Context, kind Kind, id string) ([]byte, error) {
 	var (
 		raw []byte

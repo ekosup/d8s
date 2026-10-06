@@ -76,6 +76,22 @@ type LogOptions struct {
 	Timestamps bool          // prefix each line with its RFC 3339 time
 }
 
+// ExecSession is an interactive command running in a container with a TTY.
+// Reading gives its output, writing sends input, closing ends it.
+type ExecSession interface {
+	io.ReadWriteCloser
+	Resize(ctx context.Context, rows, cols uint) error
+	// ExitCode is valid once reading has reached the end.
+	ExitCode(ctx context.Context) (int, error)
+}
+
+// ExecOptions describes the command of an ExecSession.
+type ExecOptions struct {
+	Cmd        []string
+	Env        []string
+	Rows, Cols uint
+}
+
 // Client is everything d8s needs from a Docker daemon.
 type Client interface {
 	Info(ctx context.Context) (Info, error)
@@ -84,6 +100,8 @@ type Client interface {
 	// ContainerLogs returns the container's output as plain text, stdout
 	// and stderr interleaved. Closing the reader ends the stream.
 	ContainerLogs(ctx context.Context, id string, opts LogOptions) (io.ReadCloser, error)
+	// Exec starts an interactive command in a running container.
+	Exec(ctx context.Context, id string, opts ExecOptions) (ExecSession, error)
 	// Inspect returns the daemon's full description of an object as JSON.
 	Inspect(ctx context.Context, kind Kind, id string) ([]byte, error)
 	// Events streams daemon events until ctx is cancelled. An error on the

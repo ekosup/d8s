@@ -78,4 +78,7 @@ type Resource struct {
 	Inspect func(ctx context.Context, c docker.Client, row Row) ([]byte, error)
 	// Logs opens the row's log stream as plain text. Nil means it has none.
 	Logs func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error)
+	// Exec starts an interactive command in the row's container. Nil means
+	// the resource has no shell.
+	Exec func(ctx context.Context, c docker.Client, row Row, opts docker.ExecOptions) (docker.ExecSession, error)
 }
