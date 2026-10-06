@@ -69,11 +69,16 @@ func (c *sdkClient) Info(ctx context.Context) (Info, error) {
 	if err != nil {
 		return Info{}, fmt.Errorf("get server version: %w", err)
 	}
+	sw, err := c.swarmInfo(ctx)
+	if err != nil {
+		return Info{}, err
+	}
 	return Info{
 		Context:       c.endpoint.Context,
 		Host:          c.endpoint.Host,
 		ServerVersion: v.Version,
 		APIVersion:    c.cli.ClientVersion(),
+		Swarm:         sw,
 	}, nil
 }
 
@@ -245,6 +250,12 @@ func (c *sdkClient) Remove(ctx context.Context, kind Kind, id string) error {
 		_, err = c.cli.VolumeRemove(ctx, id, client.VolumeRemoveOptions{})
 	case KindNetwork:
 		_, err = c.cli.NetworkRemove(ctx, id, client.NetworkRemoveOptions{})
+	case KindService:
+		_, err = c.cli.ServiceRemove(ctx, id, client.ServiceRemoveOptions{})
+	case KindSecret:
+		_, err = c.cli.SecretRemove(ctx, id, client.SecretRemoveOptions{})
+	case KindConfig:
+		_, err = c.cli.ConfigRemove(ctx, id, client.ConfigRemoveOptions{})
 	default:
 		return fmt.Errorf("cannot remove %q", kind)
 	}
@@ -440,6 +451,26 @@ func (c *sdkClient) Inspect(ctx context.Context, kind Kind, id string) ([]byte, 
 	case KindNetwork:
 		var res client.NetworkInspectResult
 		res, err = c.cli.NetworkInspect(ctx, id, client.NetworkInspectOptions{})
+		raw = res.Raw
+	case KindService:
+		var res client.ServiceInspectResult
+		res, err = c.cli.ServiceInspect(ctx, id, client.ServiceInspectOptions{})
+		raw = res.Raw
+	case KindTask:
+		var res client.TaskInspectResult
+		res, err = c.cli.TaskInspect(ctx, id, client.TaskInspectOptions{})
+		raw = res.Raw
+	case KindNode:
+		var res client.NodeInspectResult
+		res, err = c.cli.NodeInspect(ctx, id, client.NodeInspectOptions{})
+		raw = res.Raw
+	case KindSecret:
+		var res client.SecretInspectResult
+		res, err = c.cli.SecretInspect(ctx, id, client.SecretInspectOptions{})
+		raw = res.Raw
+	case KindConfig:
+		var res client.ConfigInspectResult
+		res, err = c.cli.ConfigInspect(ctx, id, client.ConfigInspectOptions{})
 		raw = res.Raw
 	default:
 		return nil, fmt.Errorf("cannot inspect %q", kind)

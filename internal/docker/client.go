@@ -14,6 +14,7 @@ type Info struct {
 	Host          string
 	ServerVersion string
 	APIVersion    string
+	Swarm         SwarmInfo
 }
 
 // Port is one published or exposed container port.
@@ -198,4 +199,6 @@ type Client interface {
 	// second channel ends the stream; the caller subscribes again.
 	Events(ctx context.Context) (<-chan Event, <-chan error)
 	Close() error
+
+	Swarm
 }

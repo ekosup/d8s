@@ -46,6 +46,8 @@ type Fake struct {
 	execs    []*FakeExec
 	execErr  error
 	execCode int
+
+	swarm swarmState
 }
 
 type logStream struct {
@@ -484,6 +486,8 @@ func (f *Fake) Remove(_ context.Context, kind docker.Kind, id string) error {
 			}
 		}
 		f.networks = kept
+	default:
+		f.removeSwarmObject(kind, id)
 	}
 	f.mu.Unlock()
 	f.Emit(docker.Event{Type: string(kind), Action: "remove", ID: id})
