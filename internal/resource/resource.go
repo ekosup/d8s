@@ -6,6 +6,7 @@ package resource
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/ekosup/d8s/internal/docker"
 )
@@ -81,6 +82,9 @@ type TextPage struct {
 	Key   string
 	Name  string // "History"
 	Fetch func(ctx context.Context, c docker.Client, row Row) ([]string, error)
+	// Refresh, when positive, makes the page live: Fetch runs again at this
+	// interval for as long as the page is open.
+	Refresh time.Duration
 }
 
 // Resource is the declarative definition of one kind of object.

@@ -6,7 +6,7 @@ import "time"
 func Default(now func() time.Time) (*Registry, error) {
 	reg := NewRegistry()
 	for _, res := range []Resource{
-		Containers(now),
+		WithStats(Containers(now)),
 		Images(now),
 		Volumes(now),
 		Networks(now),

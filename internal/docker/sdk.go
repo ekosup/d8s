@@ -136,6 +136,51 @@ func toContainer(s container.Summary) Container {
 	}
 }
 
+func (c *sdkClient) ContainerStats(ctx context.Context, id string) (Stats, error) {
+	res, err := c.cli.ContainerStats(ctx, id, client.ContainerStatsOptions{})
+	if err != nil {
+		return Stats{}, fmt.Errorf("container stats: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	var raw container.StatsResponse
+	if err := json.NewDecoder(res.Body).Decode(&raw); err != nil {
+		return Stats{}, fmt.Errorf("decode container stats: %w", err)
+	}
+	return toStats(raw), nil
+}
+
+func toStats(raw container.StatsResponse) Stats {
+	s := Stats{
+		CPUTotal:   raw.CPUStats.CPUUsage.TotalUsage,
+		CPUSystem:  raw.CPUStats.SystemUsage,
+		OnlineCPUs: raw.CPUStats.OnlineCPUs,
+		MemLimit:   raw.MemoryStats.Limit,
+		PIDs:       raw.PidsStats.Current,
+	}
+	// Like `docker stats`: page cache the kernel can drop is not counted.
+	// cgroup v2 calls it inactive_file, v1 total_inactive_file.
+	cache := raw.MemoryStats.Stats["inactive_file"]
+	if v, ok := raw.MemoryStats.Stats["total_inactive_file"]; ok {
+		cache = v
+	}
+	if raw.MemoryStats.Usage > cache {
+		s.MemUsage = raw.MemoryStats.Usage - cache
+	}
+	for _, n := range raw.Networks {
+		s.NetRx += n.RxBytes
+		s.NetTx += n.TxBytes
+	}
+	for _, b := range raw.BlkioStats.IoServiceBytesRecursive {
+		switch strings.ToLower(b.Op) {
+		case "read":
+			s.BlkRead += b.Value
+		case "write":
+			s.BlkWrite += b.Value
+		}
+	}
+	return s
+}
+
 func (c *sdkClient) Images(ctx context.Context) ([]Image, error) {
 	res, err := c.cli.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {

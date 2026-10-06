@@ -31,6 +31,10 @@ type Fake struct {
 	logOpts    docker.LogOptions
 	logStreams map[*logStream]struct{}
 
+	stats      map[string]docker.Stats
+	statsErr   error
+	statsCalls int
+
 	images   []docker.Image
 	history  map[string][]docker.ImageLayer
 	volumes  []docker.Volume
@@ -366,6 +370,41 @@ func (f *Fake) SetExecExitCode(code int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.execCode = code
+}
+
+// ContainerStats implements docker.Client.
+func (f *Fake) ContainerStats(_ context.Context, id string) (docker.Stats, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statsCalls++
+	if f.statsErr != nil {
+		return docker.Stats{}, f.statsErr
+	}
+	return f.stats[id], nil
+}
+
+// SetStats sets the next sample ContainerStats returns for a container.
+func (f *Fake) SetStats(id string, s docker.Stats) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.stats == nil {
+		f.stats = map[string]docker.Stats{}
+	}
+	f.stats[id] = s
+}
+
+// SetStatsError makes ContainerStats fail with err; nil restores it.
+func (f *Fake) SetStatsError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statsErr = err
+}
+
+// StatsCalls reports how many samples were requested.
+func (f *Fake) StatsCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.statsCalls
 }
 
 // Images implements docker.Client.

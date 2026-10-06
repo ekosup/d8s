@@ -150,7 +150,27 @@ func inspectAs(kind docker.Kind) func(context.Context, docker.Client, Row) ([]by
 // filled by value. Drill-downs use it to show what ties each container to
 // the parent, such as its address on a network.
 func withColumn(res Resource, at int, col Column, value func(docker.Container) string) Resource {
-	res.Columns = slices.Insert(slices.Clone(res.Columns), at, col)
+	return withColumns(res, at, []Column{col}, func(_ context.Context, _ docker.Client, cs []docker.Container) map[string]extraCells {
+		out := make(map[string]extraCells, len(cs))
+		for _, x := range cs {
+			out[x.ID] = extraCells{cells: []string{value(x)}, keys: []string{""}}
+		}
+		return out
+	})
+}
+
+// extraCells are the values of added columns for one row.
+type extraCells struct{ cells, keys []string }
+
+// withColumns inserts cols at index at. fill computes their values for all
+// containers at once, so it can do its work concurrently; a container it
+// leaves out gets "-".
+func withColumns(res Resource, at int, cols []Column, fill func(context.Context, docker.Client, []docker.Container) map[string]extraCells) Resource {
+	res.Columns = slices.Insert(slices.Clone(res.Columns), at, cols...)
+	blank := extraCells{cells: make([]string, len(cols)), keys: make([]string, len(cols))}
+	for i := range blank.cells {
+		blank.cells[i] = "-"
+	}
 
 	list := res.List
 	res.List = func(ctx context.Context, c docker.Client) ([]Row, error) {
@@ -162,13 +182,14 @@ func withColumn(res Resource, at int, col Column, value func(docker.Container) s
 		if err != nil {
 			return nil, err
 		}
-		byID := make(map[string]docker.Container, len(cs))
-		for _, x := range cs {
-			byID[x.ID] = x
-		}
+		extra := fill(ctx, c, cs)
 		for i, r := range rows {
-			rows[i].Cells = slices.Insert(slices.Clone(r.Cells), at, value(byID[r.ID]))
-			rows[i].SortKeys = slices.Insert(slices.Clone(r.SortKeys), at, "")
+			e, ok := extra[r.ID]
+			if !ok {
+				e = blank
+			}
+			rows[i].Cells = slices.Insert(slices.Clone(r.Cells), at, e.cells...)
+			rows[i].SortKeys = slices.Insert(slices.Clone(r.SortKeys), at, e.keys...)
 		}
 		return rows, nil
 	}

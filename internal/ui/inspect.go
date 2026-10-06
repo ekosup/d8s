@@ -63,25 +63,56 @@ func (a *App) capabilityBindings(res resource.Resource, view *tableView) []bindi
 	return out
 }
 
-// openTextPage fetches and shows one of a resource's extra text views.
+// openTextPage fetches and shows one of a resource's extra text views. A
+// page with a refresh interval keeps fetching while it is open.
 func (a *App) openTextPage(tp resource.TextPage, view *tableView) {
 	row, ok := view.SelectedRow()
 	if !ok || a.client == nil {
 		return
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+	client := a.client
+	fetch := func(ctx context.Context) ([]string, error) {
+		ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 		defer cancel()
-		lines, err := tp.Fetch(ctx, a.client, row)
+		return tp.Fetch(ctx, client, row)
+	}
+	label := strings.ToLower(tp.Name)
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		lines, err := fetch(ctx)
+		if err != nil {
+			cancel()
+			a.queue(func() { a.Flash(flashError, label+" "+row.Name()+": "+oneLine(err.Error())) })
+			return
+		}
+		p := newPager(tp.Name+": "+row.Name(), 0)
 		a.queue(func() {
-			if err != nil {
-				a.Flash(flashError, strings.ToLower(tp.Name)+" "+row.Name()+": "+oneLine(err.Error()))
-				return
-			}
-			p := newPager(tp.Name+": "+row.Name(), 0)
 			p.SetLines(lines)
-			a.pushPager(strings.ToLower(tp.Name), p, nil)
+			a.pushPager(label, p, cancel)
 		})
+		if tp.Refresh <= 0 {
+			return
+		}
+		tick := time.NewTicker(tp.Refresh)
+		defer tick.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				lines, err := fetch(ctx)
+				if ctx.Err() != nil {
+					return
+				}
+				a.queue(func() {
+					if err != nil {
+						a.Flash(flashError, label+" "+row.Name()+": "+oneLine(err.Error()))
+						return
+					}
+					p.SetLines(lines)
+				})
+			}
+		}
 	}()
 }
 

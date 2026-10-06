@@ -89,6 +89,21 @@ type DiskUsage struct {
 	Reclaimable int64
 }
 
+// Stats is one resource usage sample of a container. CPU counters are
+// cumulative: usage over an interval is the difference of two samples.
+type Stats struct {
+	CPUTotal   uint64 // nanoseconds of CPU the container has used
+	CPUSystem  uint64 // nanoseconds of CPU the whole host has used
+	OnlineCPUs uint32
+	MemUsage   uint64 // bytes, without reclaimable page cache
+	MemLimit   uint64
+	NetRx      uint64
+	NetTx      uint64
+	BlkRead    uint64
+	BlkWrite   uint64
+	PIDs       uint64
+}
+
 // PruneReport says what a prune removed.
 type PruneReport struct {
 	Count     int
@@ -163,6 +178,8 @@ type Client interface {
 	ContainerLogs(ctx context.Context, id string, opts LogOptions) (io.ReadCloser, error)
 	// Exec starts an interactive command in a running container.
 	Exec(ctx context.Context, id string, opts ExecOptions) (ExecSession, error)
+	// ContainerStats takes one usage sample of a running container.
+	ContainerStats(ctx context.Context, id string) (Stats, error)
 	Images(ctx context.Context) ([]Image, error)
 	ImageHistory(ctx context.Context, id string) ([]ImageLayer, error)
 	Volumes(ctx context.Context) ([]Volume, error)
