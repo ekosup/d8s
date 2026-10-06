@@ -5,6 +5,7 @@ package resource
 
 import (
 	"context"
+	"io"
 
 	"github.com/ekosup/d8s/internal/docker"
 )
@@ -75,4 +76,6 @@ type Resource struct {
 	// Inspect returns the object's full description as JSON. Nil means the
 	// resource has nothing more to show than its row.
 	Inspect func(ctx context.Context, c docker.Client, row Row) ([]byte, error)
+	// Logs opens the row's log stream as plain text. Nil means it has none.
+	Logs func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error)
 }

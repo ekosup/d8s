@@ -26,6 +26,9 @@ func (a *App) capabilityBindings(res resource.Resource, view *tableView) []bindi
 			runeBinding('y', "y", "YAML", func() { a.openInspect(res, view, true) }),
 		)
 	}
+	if res.Logs != nil {
+		out = append(out, runeBinding('l', "l", "Logs", func() { a.openLogs(res, view) }))
+	}
 	return out
 }
 

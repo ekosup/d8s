@@ -3,6 +3,7 @@ package resource
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -40,6 +41,9 @@ func Containers(now func() time.Time) Resource {
 		},
 		Actions: containerActions(),
 		Inspect: inspectAs(docker.KindContainer),
+		Logs: func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error) {
+			return c.ContainerLogs(ctx, row.ID, opts)
+		},
 	}
 }
 

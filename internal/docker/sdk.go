@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
@@ -104,6 +107,50 @@ func (c *sdkClient) ContainerAction(ctx context.Context, id string, op Container
 		return fmt.Errorf("%s container: %w", op, err)
 	}
 	return nil
+}
+
+func (c *sdkClient) ContainerLogs(ctx context.Context, id string, opts LogOptions) (io.ReadCloser, error) {
+	// A container with a TTY sends raw output; without one the daemon
+	// multiplexes stdout and stderr and the stream must be unpacked.
+	info, err := c.cli.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("inspect container: %w", err)
+	}
+	tty := info.Container.Config != nil && info.Container.Config.Tty
+
+	o := client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: opts.Follow, Timestamps: opts.Timestamps}
+	if opts.Tail > 0 {
+		o.Tail = strconv.Itoa(opts.Tail)
+	}
+	if opts.Since > 0 {
+		o.Since = strconv.FormatInt(time.Now().Add(-opts.Since).Unix(), 10)
+	}
+	body, err := c.cli.ContainerLogs(ctx, id, o)
+	if err != nil {
+		return nil, fmt.Errorf("read container logs: %w", err)
+	}
+	if tty {
+		return body, nil
+	}
+	pr, pw := io.Pipe()
+	go func() {
+		_, err := stdcopy.StdCopy(pw, pw, body)
+		_ = body.Close()
+		_ = pw.CloseWithError(err)
+	}()
+	return &pipeCloser{PipeReader: pr, closeSource: body.Close}, nil
+}
+
+// pipeCloser closes the stream it unpacks from when the reader is closed,
+// which is what ends the copying goroutine.
+type pipeCloser struct {
+	*io.PipeReader
+	closeSource func() error
+}
+
+func (p *pipeCloser) Close() error {
+	_ = p.closeSource()
+	return p.PipeReader.Close()
 }
 
 func (c *sdkClient) Inspect(ctx context.Context, kind Kind, id string) ([]byte, error) {

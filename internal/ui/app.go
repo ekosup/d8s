@@ -78,6 +78,9 @@ type App struct {
 	nextPageID int
 	stop       func()
 
+	logs      *logView // the log page currently open, if any
+	logBuffer int      // lines a log page keeps
+
 	// Seams for the pager's side effects.
 	dumpDir string            // where ctrl-s saves
 	now     func() time.Time  // names saved files
@@ -130,6 +133,7 @@ func NewApp(info docker.Info, opts ...Option) *App {
 	a.stop = a.tv.Stop
 	a.queue = func(f func()) { a.tv.QueueUpdateDraw(f) }
 	a.now = time.Now
+	a.logBuffer = defaultLogBuffer
 	a.dumpDir = defaultDumpDir()
 	a.tv.SetBeforeDrawFunc(func(s tcell.Screen) bool {
 		a.screen = s

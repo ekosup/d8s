@@ -3,7 +3,9 @@ package dockertest
 
 import (
 	"context"
+	"io"
 	"sync"
+	"time"
 
 	"github.com/ekosup/d8s/internal/docker"
 )
@@ -21,7 +23,20 @@ type Fake struct {
 	actionErr  error
 	inspect    map[string][]byte
 	inspectErr error
+
+	logs       map[string][]string
+	logErr     error
+	logOpts    docker.LogOptions
+	logStreams map[*logStream]struct{}
 }
+
+type logStream struct {
+	id string
+	ch chan string
+}
+
+// LogTime is the timestamp the fake puts on every log line.
+var LogTime = time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)
 
 // Call records one mutating request made through the fake.
 type Call struct {
@@ -125,6 +140,110 @@ func (f *Fake) SetActionError(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.actionErr = err
+}
+
+// ContainerLogs implements docker.Client. With Follow the stream stays
+// open and delivers lines added through AppendLog until ctx is cancelled
+// or the reader is closed.
+func (f *Fake) ContainerLogs(ctx context.Context, id string, opts docker.LogOptions) (io.ReadCloser, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.logOpts = opts
+	if f.logErr != nil {
+		return nil, f.logErr
+	}
+	lines := f.logs[id]
+	if opts.Tail > 0 && len(lines) > opts.Tail {
+		lines = lines[len(lines)-opts.Tail:]
+	}
+	lines = append([]string(nil), lines...)
+
+	stream := &logStream{id: id, ch: make(chan string, 1<<16)}
+	if f.logStreams == nil {
+		f.logStreams = map[*logStream]struct{}{}
+	}
+	f.logStreams[stream] = struct{}{}
+
+	pr, pw := io.Pipe()
+	format := func(l string) string {
+		if opts.Timestamps {
+			l = LogTime.Format(time.RFC3339Nano) + " " + l
+		}
+		return l + "\n"
+	}
+	go func() {
+		defer func() {
+			f.mu.Lock()
+			delete(f.logStreams, stream)
+			f.mu.Unlock()
+			_ = pw.Close()
+		}()
+		for _, l := range lines {
+			if _, err := io.WriteString(pw, format(l)); err != nil {
+				return
+			}
+		}
+		if !opts.Follow {
+			return
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case l := <-stream.ch:
+				if _, err := io.WriteString(pw, format(l)); err != nil {
+					return
+				}
+			}
+		}
+	}()
+	return pr, nil
+}
+
+// SetLogs sets the lines a container has already written.
+func (f *Fake) SetLogs(id string, lines ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.logs == nil {
+		f.logs = map[string][]string{}
+	}
+	f.logs[id] = lines
+}
+
+// AppendLog makes the container write one more line.
+func (f *Fake) AppendLog(id, line string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.logs == nil {
+		f.logs = map[string][]string{}
+	}
+	f.logs[id] = append(f.logs[id], line)
+	for s := range f.logStreams {
+		if s.id == id {
+			s.ch <- line
+		}
+	}
+}
+
+// SetLogError makes ContainerLogs fail with err; nil restores it.
+func (f *Fake) SetLogError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.logErr = err
+}
+
+// LastLogOptions returns the options of the most recent ContainerLogs call.
+func (f *Fake) LastLogOptions() docker.LogOptions {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.logOpts
+}
+
+// OpenLogStreams reports how many log streams are still being served.
+func (f *Fake) OpenLogStreams() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.logStreams)
 }
 
 // Inspect implements docker.Client.

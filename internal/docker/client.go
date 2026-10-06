@@ -4,6 +4,7 @@ package docker
 
 import (
 	"context"
+	"io"
 	"time"
 )
 
@@ -67,11 +68,22 @@ const (
 	KindNetwork   Kind = "network"
 )
 
+// LogOptions selects which log lines to read.
+type LogOptions struct {
+	Follow     bool          // keep the stream open for new lines
+	Tail       int           // only the last n lines; 0 = all
+	Since      time.Duration // only lines newer than this; 0 = no limit
+	Timestamps bool          // prefix each line with its RFC 3339 time
+}
+
 // Client is everything d8s needs from a Docker daemon.
 type Client interface {
 	Info(ctx context.Context) (Info, error)
 	Containers(ctx context.Context) ([]Container, error)
 	ContainerAction(ctx context.Context, id string, op ContainerOp) error
+	// ContainerLogs returns the container's output as plain text, stdout
+	// and stderr interleaved. Closing the reader ends the stream.
+	ContainerLogs(ctx context.Context, id string, opts LogOptions) (io.ReadCloser, error)
 	// Inspect returns the daemon's full description of an object as JSON.
 	Inspect(ctx context.Context, kind Kind, id string) ([]byte, error)
 	// Events streams daemon events until ctx is cancelled. An error on the
