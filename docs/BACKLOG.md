@@ -66,25 +66,25 @@ Jalur kritisnya adalah semua story P0: 27 story, 75 poin.
 
 ### Story
 
-- [ ] **D8S-001 — Inisialisasi repo Go: struktur paket, Makefile, lint** `Fondasi · P0 · S`
+- [x] **D8S-001 — Inisialisasi repo Go: struktur paket, Makefile, lint** `Fondasi · P0 · S`
   - Terima: `make build`, `make test`, dan `make lint` berjalan hijau di VM dev. `make tools` memasang `golangci-lint`. `make demo-up` dan `make demo-down` membuat dan menghapus container `d8s-demo-*`.
-- [ ] **D8S-002 — Klien Docker: konek dari context aktif atau `DOCKER_HOST`, negosiasi versi API, ping** `Koneksi · P0 · M`
+- [x] **D8S-002 — Klien Docker: konek dari context aktif atau `DOCKER_HOST`, negosiasi versi API, ping** `Koneksi · P0 · M`
   - Terima: konek ke socket lokal; daemon mati atau izin ditolak menghasilkan pesan yang menyebut sebabnya.
-- [ ] **D8S-003 — Kerangka TUI: header, area utama, baris status, tumpukan halaman** `Fondasi · P0 · M`
+- [x] **D8S-003 — Kerangka TUI: header, area utama, baris status, tumpukan halaman** `Fondasi · P0 · M`
   - Terima: halaman bisa ditumpuk dan dilepas dengan `Esc`; resize terminal tidak merusak tata letak.
-- [ ] **D8S-004 — Komponen tabel generik: kolom deklaratif, seleksi, scroll, sort** `Fondasi · P0 · L`
+- [x] **D8S-004 — Komponen tabel generik: kolom deklaratif, seleksi, scroll, sort** `Fondasi · P0 · L`
   - Terima: satu komponen dipakai semua view; 2.000 baris tetap responsif (dibuktikan dengan unit test dan benchmark).
-- [ ] **D8S-005 — Registry resource: antarmuka list, kolom, aksi, dan anak drill-down** `Fondasi · P0 · M`
+- [x] **D8S-005 — Registry resource: antarmuka list, kolom, aksi, dan anak drill-down** `Fondasi · P0 · M`
   - Terima: resource baru didaftarkan tanpa mengubah kode view.
-- [ ] **D8S-006 — View container: daftar live** `Engine · P0 · M`
+- [x] **D8S-006 — View container: daftar live** `Engine · P0 · M`
   - Terima: perubahan state container tampil dalam 2 detik tanpa input pengguna.
-- [ ] **D8S-007 — Store dan watcher: refresh dari event dengan debounce, polling sebagai cadangan** `Fondasi · P0 · L`
+- [x] **D8S-007 — Store dan watcher: refresh dari event dengan debounce, polling sebagai cadangan** `Fondasi · P0 · L`
   - Terima: hanya view aktif yang di-refresh; tidak ada goroutine bocor setelah pindah view.
-- [ ] **D8S-008 — Command mode `:` dengan alias dan autocomplete** `UX · P0 · M`
+- [x] **D8S-008 — Command mode `:` dengan alias dan autocomplete** `UX · P0 · M`
   - Terima: `:c`, `:containers`, dan awalan unik membuka view yang sama; perintah tak dikenal memberi pesan.
-- [ ] **D8S-009 — Filter `/`: substring, regex, dan kebalikan** `UX · P0 · M`
+- [x] **D8S-009 — Filter `/`: substring, regex, dan kebalikan** `UX · P0 · M`
   - Terima: filter bertahan saat tabel refresh; `Esc` menghapusnya.
-- [ ] **D8S-010 — Bantuan `?` yang dibangkitkan dari keymap view aktif** `UX · P1 · S`
+- [x] **D8S-010 — Bantuan `?` yang dibangkitkan dari keymap view aktif** `UX · P1 · S`
   - Terima: tombol yang tampil di bantuan selalu sama dengan yang benar-benar terikat.
 
 ### Build
