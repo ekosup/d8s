@@ -55,6 +55,9 @@ swarm-down: ## remove the development swarm
 test-integration: ## tests against the development swarm (run swarm-up first)
 	DOCKER_CONTEXT=d8s-swarm go test -tags integration -count=1 ./internal/docker/...
 
+test-matrix: ## integration tests against the oldest supported and the latest engine
+	scripts/matrix.sh
+
 bench: ## measure against the performance targets, with synthetic data
 	@set -o pipefail; go test -tags bench -count=1 -v -run TestPerformanceTargets ./internal/ui/ | grep -vE '^(=== RUN|--- PASS|PASS$$|ok )'
 
