@@ -21,6 +21,7 @@ type Fake struct {
 	eventCalls int
 	subs       []subscription
 	calls      []Call
+	closed     bool
 	actionErr  error
 	inspect    map[string][]byte
 	inspectErr error
@@ -562,7 +563,19 @@ func (f *Fake) Events(ctx context.Context) (<-chan docker.Event, <-chan error) {
 }
 
 // Close implements docker.Client.
-func (f *Fake) Close() error { return nil }
+func (f *Fake) Close() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.closed = true
+	return nil
+}
+
+// Closed reports whether Close was called.
+func (f *Fake) Closed() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.closed
+}
 
 // SetContainers replaces the container list.
 func (f *Fake) SetContainers(cs ...docker.Container) {

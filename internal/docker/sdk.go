@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +25,11 @@ type sdkClient struct {
 // Connect opens a client for the endpoint, negotiates the API version and
 // verifies the daemon answers.
 func Connect(ctx context.Context, ep Endpoint) (Client, error) {
-	cli, err := client.New(client.WithHost(ep.Host))
+	opts, err := clientOptions(ep)
+	if err != nil {
+		return nil, err
+	}
+	cli, err := client.New(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("configure docker client for %s: %w", ep.Host, err)
 	}
@@ -32,6 +38,30 @@ func Connect(ctx context.Context, ep Endpoint) (Client, error) {
 		return nil, explainConnectError(ep.Host, err)
 	}
 	return &sdkClient{cli: cli, endpoint: ep}, nil
+}
+
+// clientOptions picks the transport for an endpoint: a local socket or
+// plain TCP, TCP with client certificates, or a tunnel through ssh.
+func clientOptions(ep Endpoint) ([]client.Opt, error) {
+	if strings.HasPrefix(ep.Host, "ssh://") {
+		args, err := sshArgs(ep.Host)
+		if err != nil {
+			return nil, err
+		}
+		dial := func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialCommand(ctx, "ssh", args...)
+		}
+		return []client.Opt{
+			client.WithHTTPClient(&http.Client{Transport: &http.Transport{DialContext: dial}}),
+			client.WithHost("http://docker.example.com"), // placeholder; every request goes through dial
+			client.WithDialContext(dial),
+		}, nil
+	}
+	opts := []client.Opt{client.WithHost(ep.Host)}
+	if ep.TLS != nil {
+		opts = append(opts, client.WithTLSClientConfig(ep.TLS.CA, ep.TLS.Cert, ep.TLS.Key))
+	}
+	return opts, nil
 }
 
 func (c *sdkClient) Info(ctx context.Context) (Info, error) {
