@@ -41,8 +41,8 @@ func (a *App) commands() []command {
 
 func (a *App) buildPrompt() {
 	a.prompt = tview.NewInputField().
-		SetFieldStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite)).
-		SetLabelStyle(tcell.StyleDefault.Foreground(colorTitle).Bold(true))
+		SetFieldStyle(theme.input).
+		SetLabelStyle(theme.label)
 	a.hint = tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignRight)
 
 	a.prompt.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
@@ -123,7 +123,7 @@ func (a *App) promptChanged(text string) {
 			p.filter.SetFilter(text)
 		}
 	case promptCommand:
-		a.hint.SetText("[gray]" + tview.Escape(strings.Join(a.candidates(text), "  ")) + " ")
+		a.hint.SetText(theme.tagMuted + tview.Escape(strings.Join(a.candidates(text), "  ")) + "[-:-:-] ")
 	}
 }
 

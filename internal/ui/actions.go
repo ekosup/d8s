@@ -177,8 +177,8 @@ func oneLine(s string) string {
 // confirm shows a yes/no dialog over the current page.
 func (a *App) confirm(question string, yes func()) {
 	text := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
-	text.SetText(fmt.Sprintf("\n%s\n\n[steelblue]<y>[-] yes   [steelblue]<n>[-] no", tview.Escape(question)))
-	text.SetBorder(true).SetTitle(" Confirm ").SetBorderColor(toneColors[resource.ToneWarn])
+	text.SetText(fmt.Sprintf("\n%s\n\n%s<y>[-:-:-] yes   %s<n>[-:-:-] no", tview.Escape(question), theme.tagKey, theme.tagKey))
+	text.SetBorder(true).SetTitle(" Confirm ").SetBorderColor(theme.dialog)
 
 	lines := strings.Split(question, "\n")
 	width := 40
@@ -222,8 +222,8 @@ func (a *App) ask(question, label, initial string, submit func(value string) boo
 	field := tview.NewInputField().
 		SetLabel(" " + label + ": ").
 		SetText(initial).
-		SetFieldStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite).Underline(true)).
-		SetLabelStyle(tcell.StyleDefault.Foreground(colorTitle))
+		SetFieldStyle(theme.input.Underline(true)).
+		SetLabelStyle(theme.label)
 	field.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter && submit(field.GetText()) {
 			a.input = nil
@@ -236,8 +236,8 @@ func (a *App) ask(question, label, initial string, submit func(value string) boo
 		AddItem(text, len(lines)+1, 0, false).
 		AddItem(field, 1, 0, true).
 		AddItem(tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter).
-			SetText("[steelblue]<enter>[-] ok   [steelblue]<esc>[-] cancel"), 2, 0, false)
-	box.SetBorder(true).SetTitle(" Input ").SetBorderColor(toneColors[resource.ToneWarn])
+			SetText(theme.tagKey+"<enter>[-:-:-] ok   "+theme.tagKey+"<esc>[-:-:-] cancel"), 2, 0, false)
+	box.SetBorder(true).SetTitle(" Input ").SetBorderColor(theme.dialog)
 
 	width := len(label) + 30
 	for _, l := range lines {

@@ -141,7 +141,7 @@ func (p *pager) writeHighlighted(sb *strings.Builder, line string) {
 			continue // an empty match would highlight nothing
 		}
 		sb.WriteString(tview.Escape(line[last:m[0]]))
-		fmt.Fprintf(sb, `["m%d"][black:yellow]%s[-:-][""]`, p.matches, tview.Escape(line[m[0]:m[1]]))
+		fmt.Fprintf(sb, `["m%d"]%s%s[-:-:-][""]`, p.matches, theme.tagMatch, tview.Escape(line[m[0]:m[1]]))
 		p.matches++
 		last = m[1]
 	}

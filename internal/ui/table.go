@@ -45,7 +45,7 @@ func newTableView(title string, cols []resource.Column) *tableView {
 	v.SetBorder(true)
 	v.SetFixed(1, 0)
 	v.SetSelectable(true, false)
-	v.SetSelectedStyle(tcell.StyleDefault.Foreground(colorSelectFg).Background(colorSelectBg))
+	v.SetSelectedStyle(theme.selected)
 	v.sortKeys = assignSortKeys(cols)
 	v.refresh()
 	return v
@@ -126,8 +126,8 @@ func (v *tableView) refresh() {
 		cell := tview.NewTableCell(name).
 			SetSelectable(false).
 			SetExpansion(1).
-			SetTextColor(colorHeader).
-			SetAttributes(tcell.AttrBold)
+			SetTextColor(theme.header.color).
+			SetAttributes(theme.header.attrs)
 		if col.Right {
 			cell.SetAlign(tview.AlignRight)
 		}
@@ -135,16 +135,16 @@ func (v *tableView) refresh() {
 	}
 	target := 0
 	for i, r := range rows {
-		color := toneColors[r.Tone]
+		style := theme.tones[r.Tone]
 		if v.marks[r.ID] {
-			color = colorMark
+			style = theme.mark
 		}
 		for c, col := range v.model.cols {
 			text := ""
 			if c < len(r.Cells) {
 				text = r.Cells[c]
 			}
-			cell := tview.NewTableCell(text).SetExpansion(1).SetTextColor(color)
+			cell := tview.NewTableCell(text).SetExpansion(1).SetTextColor(style.color).SetAttributes(style.attrs)
 			if col.Right {
 				cell.SetAlign(tview.AlignRight)
 			}

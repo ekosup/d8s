@@ -159,8 +159,8 @@ func (a *App) notManagerPage(res resource.Resource) *page {
 		reason = "This engine is a swarm worker; only a manager can answer for the cluster."
 	}
 	text := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	text.SetText(fmt.Sprintf("\n\n[yellow]%s[-]\n\n%s needs a connection to a swarm manager.\nPick one with [steelblue]:ctx[-], or go back with [steelblue]:c[-].",
-		reason, tview.Escape(res.Title)))
+	text.SetText(fmt.Sprintf("\n\n%s%s[-:-:-]\n\n%s needs a connection to a swarm manager.\nPick one with %s:ctx[-:-:-], or go back with %s:c[-:-:-].",
+		theme.tagWarn, reason, tview.Escape(res.Title), theme.tagKey, theme.tagKey))
 	text.SetBorder(true).SetTitle(" " + tview.Escape(res.Title) + " ")
 	return &page{name: res.Name, prim: text}
 }

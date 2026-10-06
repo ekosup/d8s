@@ -253,14 +253,14 @@ func (a *App) top() *page {
 
 // Flash shows a message on the status line until the next key press.
 func (a *App) Flash(level flashLevel, msg string) {
-	color := "white"
+	tag := theme.tagInfo
 	switch level {
 	case flashWarn:
-		color = "yellow"
+		tag = theme.tagWarn
 	case flashError:
-		color = "orangered"
+		tag = theme.tagError
 	}
-	a.status.SetText(fmt.Sprintf("[%s]%s ", color, tview.Escape(msg)))
+	a.status.SetText(tag + tview.Escape(msg) + "[-:-:-] ")
 }
 
 func (a *App) clearFlash() { a.status.SetText("") }
@@ -363,7 +363,7 @@ func (a *App) drawHeader() {
 	var sb strings.Builder
 	for _, f := range info {
 		label := f[0] + ":"
-		fmt.Fprintf(&sb, " [aqua]%s[-]%s [white::b]%s[-:-:-]\n", label, strings.Repeat(" ", labelWidth-len(label)), tview.Escape(f[1]))
+		fmt.Fprintf(&sb, " %s%s[-:-:-]%s %s%s[-:-:-]\n", theme.tagLabel, label, strings.Repeat(" ", labelWidth-len(label)), theme.tagValue, tview.Escape(f[1]))
 		infoWidth = max(infoWidth, labelWidth+1+len([]rune(f[1])))
 	}
 	// The info column takes what it needs, within reason; keys share the rest.
@@ -407,7 +407,7 @@ func hintColumn(bs []binding) (text string, width int) {
 	for _, b := range bs {
 		key := "<" + b.label + ">"
 		pad := strings.Repeat(" ", keyWidth-len([]rune(key)))
-		fmt.Fprintf(&sb, "[dodgerblue::b]%s[-:-:-]%s [white]%s[-]\n", tview.Escape(key), pad, tview.Escape(b.desc))
+		fmt.Fprintf(&sb, "%s%s[-:-:-]%s %s\n", theme.tagKey, tview.Escape(key), pad, tview.Escape(b.desc))
 		width = max(width, keyWidth+1+len([]rune(b.desc)))
 	}
 	return sb.String(), width + 2
@@ -416,11 +416,11 @@ func hintColumn(bs []binding) (text string, width int) {
 func (a *App) drawCrumbs() {
 	parts := make([]string, len(a.stack))
 	for i, p := range a.stack {
-		color := "gray"
+		tag := theme.tagMuted
 		if i == len(a.stack)-1 {
-			color = "aqua"
+			tag = theme.tagCurrent
 		}
-		parts[i] = fmt.Sprintf("[%s]<%s>", color, tview.Escape(p.name))
+		parts[i] = fmt.Sprintf("%s<%s>[-:-:-]", tag, tview.Escape(p.name))
 	}
 	text := " " + strings.Join(parts, " ")
 	a.crumbs.SetText(text)

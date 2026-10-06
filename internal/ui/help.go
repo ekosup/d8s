@@ -139,13 +139,13 @@ func layoutSections(sections []helpSection) string {
 			labelWidth = max(labelWidth, len([]rune(e.label))+2)
 		}
 		c := column{
-			lines: []string{fmt.Sprintf("[aqua::b]%s[-:-:-]", tview.Escape(sec.title))},
+			lines: []string{fmt.Sprintf("%s%s[-:-:-]", theme.tagValue, tview.Escape(sec.title))},
 			plain: []int{len([]rune(sec.title))},
 		}
 		for _, e := range sec.entries {
 			label := "<" + e.label + ">"
 			pad := strings.Repeat(" ", labelWidth-len([]rune(label)))
-			c.lines = append(c.lines, fmt.Sprintf("[dodgerblue::b]%s[-:-:-]%s  %s", tview.Escape(label), pad, tview.Escape(e.desc)))
+			c.lines = append(c.lines, fmt.Sprintf("%s%s[-:-:-]%s  %s", theme.tagKey, tview.Escape(label), pad, tview.Escape(e.desc)))
 			c.plain = append(c.plain, labelWidth+2+len([]rune(e.desc)))
 		}
 		for _, w := range c.plain {

@@ -178,6 +178,9 @@ func runUI(o options) error {
 	if err != nil {
 		return err
 	}
+	if err := ui.SetSkin(ui.SkinFor(cfg.Skin, os.Getenv)); err != nil {
+		return err
+	}
 	logger, closeLog, err := openLog(o.logFile)
 	if err != nil {
 		return err
