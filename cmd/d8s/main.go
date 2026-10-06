@@ -213,11 +213,6 @@ func runUI(o options) error {
 			return err
 		}
 	}
-	home, err := registry.Lookup(cfg.DefaultView)
-	if err != nil {
-		return fmt.Errorf("defaultView %q in the configuration is not a view: %w", cfg.DefaultView, err)
-	}
-
 	app = ui.NewApp(info,
 		ui.WithClient(client),
 		ui.WithRegistry(registry),
@@ -226,6 +221,7 @@ func runUI(o options) error {
 		ui.WithWatchOptions(store.Options{Poll: cfg.Refresh.Std()}),
 		ui.WithLogSettings(cfg.LogBuffer, cfg.LogTail),
 		ui.WithShell(cfg.Shell),
+		ui.WithHomeView(cfg.DefaultView),
 		ui.WithLogger(logger),
 		ui.WithSortStore(config.OpenState(filepath.Join(ui.StateDir(os.Getenv), "state.yaml"))),
 		ui.WithPolicy(func(context string) ui.Policy {
@@ -241,7 +237,9 @@ func runUI(o options) error {
 	}
 	warnings := append(app.SetCustom(cfg.Aliases, cfg.Hotkeys), app.SetViews(views)...)
 
-	app.ShowResource(home)
+	if err := app.ShowHome(); err != nil {
+		return fmt.Errorf("defaultView in the configuration: %w", err)
+	}
 	app.ShowWarnings(warnings)
 	return app.Run()
 }

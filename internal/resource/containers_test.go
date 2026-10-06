@@ -114,3 +114,24 @@ func TestDefaultRegistryHasContainers(t *testing.T) {
 		}
 	}
 }
+
+func TestContainerImageIsShownWithoutDigest(t *testing.T) {
+	fake := dockertest.NewFake(dockertest.WithContainers(
+		docker.Container{ID: "1", Name: "pinned", State: "running", Created: now,
+			Image: "registry.example.com/team/app:0.1.99@sha256:76ff65bf0edb7dfe083f5715f4af578c0990c91e6074c390f23d2e7b9e58a863"},
+		docker.Container{ID: "2", Name: "tagged", State: "running", Created: now, Image: "nginx:alpine"},
+		docker.Container{ID: "3", Name: "untagged", State: "running", Created: now,
+			Image: "sha256:6d700e967fbb21218f54ccf005612b5d0dcbf108a809701b158d1c3dede028b1"},
+		docker.Container{ID: "4", Name: "port", State: "running", Created: now, Image: "localhost:5000/app"},
+	))
+	rows, err := Containers(fixedNow).List(context.Background(), fake)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"registry.example.com/team/app:0.1.99", "nginx:alpine", "6d700e967fbb", "localhost:5000/app"}
+	for i, w := range want {
+		if got := rows[i].Cells[1]; got != w {
+			t.Errorf("row %s: IMAGE = %q, want %q", rows[i].Name(), got, w)
+		}
+	}
+}

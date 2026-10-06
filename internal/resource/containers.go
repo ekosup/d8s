@@ -61,7 +61,7 @@ func containersWhere(now func() time.Time, title string, keep func(docker.Contai
 				age := now().Sub(x.Created)
 				rows = append(rows, Row{
 					ID:       x.ID,
-					Cells:    []string{x.Name, x.Image, x.State, x.Status, formatPorts(x.Ports), humanAge(age)},
+					Cells:    []string{x.Name, displayImage(x.Image), x.State, x.Status, formatPorts(x.Ports), humanAge(age)},
 					SortKeys: []string{"", "", "", "", "", fmt.Sprintf("%020d", max(int64(age/time.Second), 0))},
 					Tone:     containerTone(x),
 					Attrs:    map[string]string{attrState: x.State},
@@ -81,6 +81,16 @@ func containersWhere(now func() time.Time, title string, keep func(docker.Contai
 }
 
 const attrState = "state"
+
+// displayImage is an image reference as people recognise it: without the
+// digest a swarm pins it to, and with a bare image ID shortened.
+func displayImage(image string) string {
+	ref := imageRef(image)
+	if strings.HasPrefix(ref, "sha256:") {
+		return shortID(ref)
+	}
+	return ref
+}
 
 // containerIsActive reports whether a container has a live process:
 // running, or paused or restarting, which are still its own states of

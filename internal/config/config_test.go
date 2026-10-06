@@ -24,7 +24,7 @@ func TestDefaultsWithoutAFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Default()
-	if cfg.Refresh != want.Refresh || cfg.DefaultView != "containers" || cfg.LogBuffer != 5000 || cfg.LogTail != 1000 ||
+	if cfg.Refresh != want.Refresh || cfg.DefaultView != "auto" || cfg.LogBuffer != 5000 || cfg.LogTail != 1000 ||
 		cfg.Skin != "dark" || cfg.ReadOnly || cfg.Refresh.Std() != 2*time.Second {
 		t.Fatalf("defaults: %+v", cfg)
 	}
@@ -77,7 +77,7 @@ func TestPartialFileKeepsOtherDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Skin != "light" || cfg.LogBuffer != 5000 || cfg.Refresh.Std() != 2*time.Second || cfg.DefaultView != "containers" {
+	if cfg.Skin != "light" || cfg.LogBuffer != 5000 || cfg.Refresh.Std() != 2*time.Second || cfg.DefaultView != "auto" {
 		t.Fatalf("got %+v", cfg)
 	}
 }

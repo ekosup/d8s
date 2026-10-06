@@ -305,7 +305,7 @@ make release-snapshot   # ±20 detik; mengisi dist/
 3. `make test-matrix` berakhir dengan tabel dua baris `pass`: engine 20.10 (API 1.41) dan engine terbaru.
 4. `make bench` mencetak enam ukuran, semuanya `pass`.
 5. `make demo-up`, lalu `./bin/d8s --readonly`. Header menampilkan `Mode: READ-ONLY`. `r`, `x`, dan `Ctrl-d` pada `d8s-demo-web` ditolak dengan pesan dan tanpa dialog; `s` (shell) juga ditolak; `l`, `d`, dan `h` tetap berfungsi. Container tetap ada.
-6. Buat `~/.config/d8s/config.yaml` berisi `defaultView: images`; d8s langsung terbuka di view image. Tambahkan baris `refesh: 5s` (salah ketik); d8s menolak jalan dan menyebut `line 2` beserta barisnya. `d8s info` melaporkan hal yang sama. Hapus baris itu.
+6. Buat `~/.config/d8s/config.yaml` berisi `defaultView: images`; d8s langsung terbuka di view image. (Tanpa pengaturan itu, d8s terbuka di container, atau di service bila terhubung ke manager Swarm.) Tambahkan baris `refesh: 5s` (salah ketik); d8s menolak jalan dan menyebut `line 2` beserta barisnya. `d8s info` melaporkan hal yang sama. Hapus baris itu.
 7. Tambahkan `skin: light`; warna berganti dan tetap terbaca di terminal berlatar terang. `NO_COLOR=1 ./bin/d8s` tampil tanpa warna: baris terpilih terbalik, container `exited` redup.
 8. Tambahkan ke konfigurasi:
    ```yaml

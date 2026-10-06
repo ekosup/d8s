@@ -14,10 +14,17 @@ GORELEASER_VER := v2.18.2
 
 DEMO_IMAGE := nginx:alpine
 
-.PHONY: build test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration test-matrix bench release-snapshot clean
+.PHONY: build install test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration test-matrix bench release-snapshot clean
 
 build: ## build bin/d8s
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/d8s ./cmd/d8s
+
+PREFIX ?= $(HOME)/.local
+
+install: build ## copy bin/d8s to $(PREFIX)/bin
+	install -d $(PREFIX)/bin
+	install -m 0755 bin/d8s $(PREFIX)/bin/d8s
+	@echo "installed $(PREFIX)/bin/d8s"
 
 test: ## unit tests
 	go test -race ./...

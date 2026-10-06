@@ -57,7 +57,7 @@ type View struct {
 // Config is the content of the settings file.
 type Config struct {
 	Refresh     Duration                 `yaml:"refresh"`     // how often a view polls
-	DefaultView string                   `yaml:"defaultView"` // command of the view shown at start
+	DefaultView string                   `yaml:"defaultView"` // view shown at start; "auto" = services on a swarm manager, else containers
 	LogBuffer   int                      `yaml:"logBuffer"`   // lines a log page keeps
 	LogTail     int                      `yaml:"logTail"`     // lines fetched when a log page opens
 	Shell       string                   `yaml:"shell"`       // shell to run in containers; empty = bash, else sh
@@ -73,7 +73,7 @@ type Config struct {
 func Default() Config {
 	return Config{
 		Refresh:     Duration(2 * time.Second),
-		DefaultView: "containers",
+		DefaultView: "auto",
 		LogBuffer:   5000,
 		LogTail:     1000,
 		Skin:        "dark",

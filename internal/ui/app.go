@@ -107,6 +107,7 @@ type App struct {
 	copy    func(data []byte) // puts text on the clipboard
 	screen  tcell.Screen      // the live screen, once drawing has started
 
+	home      string              // command of the view a connection opens on; "" or "auto" = by cluster
 	views     map[string][]string // user-chosen columns per view
 	sorts     SortStore           // remembered sort per view; may be nil
 	aliases   map[string]string   // user-defined commands: name -> "view" or "view /filter"

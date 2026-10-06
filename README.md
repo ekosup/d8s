@@ -41,6 +41,12 @@ Atau dari sumber, dengan Go 1.24 ke atas:
 go install github.com/ekosup/d8s/cmd/d8s@latest
 ```
 
+Atau dari salinan repo ini, ke `~/.local/bin` (atau `PREFIX` lain):
+
+```bash
+make install
+```
+
 Periksa hasilnya:
 
 ```bash
@@ -52,7 +58,7 @@ d8s memakai Docker context yang sedang aktif, sama seperti `docker`. Kalau `dock
 
 ## Lima menit pertama
 
-1. Jalankan `d8s`. Daftar container tampil dan memperbarui diri sendiri.
+1. Jalankan `d8s`. Daftar container tampil dan memperbarui diri sendiri. (Bila terhubung ke manager Swarm, yang tampil lebih dulu adalah daftar service; `:c` membuka container.)
 2. Gerakkan sorotan dengan `j` / `k` atau panah.
 3. Tekan `l` untuk melihat log container yang disorot. `Esc` untuk kembali.
 4. Tekan `/`, ketik sebagian nama, `Enter` untuk menyaring. `Esc` menghapus saringan.
@@ -169,7 +175,7 @@ Opsional. Berkasnya `~/.config/d8s/config.yaml` (atau `$XDG_CONFIG_HOME/d8s/conf
 
 ```yaml
 refresh: 2s              # seberapa sering view memeriksa ulang; minimal 500ms
-defaultView: containers  # view yang dibuka pertama
+defaultView: auto        # view pertama; auto = service di manager Swarm, selain itu container
 logBuffer: 5000          # baris yang disimpan satu halaman log
 logTail: 1000            # baris yang diambil saat log dibuka
 shell: ""                # shell di container; kosong = bash, lalu sh

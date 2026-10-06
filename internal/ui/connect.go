@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -150,18 +151,42 @@ func (a *App) adopt(client docker.Client, info docker.Info) {
 	a.applyPolicy()
 	a.startEventLog()
 	a.drawHeader()
-	if a.registry != nil {
-		if home, err := a.registry.Lookup(homeResource); err == nil {
-			a.ShowResource(home) // closes every page, and with them their streams
-		}
+	if err := a.ShowHome(); err != nil { // closes every page, and with them their streams
+		a.Flash(flashError, err.Error())
 	}
 	if old != nil {
 		go func() { _ = old.Close() }()
 	}
 }
 
-// homeResource is the view a fresh connection starts on.
-const homeResource = "containers"
+// HomeAuto as the home view means: pick by what the daemon is.
+const HomeAuto = "auto"
+
+// WithHomeView sets the view a connection opens on: a view's command, or
+// HomeAuto (also the meaning of "") to follow the cluster.
+func WithHomeView(command string) Option { return func(a *App) { a.home = command } }
+
+// ShowHome opens the home view of the current connection. On HomeAuto that
+// is the service list on a swarm manager, where the cluster is, and the
+// container list everywhere else.
+func (a *App) ShowHome() error {
+	if a.registry == nil {
+		return nil
+	}
+	command := a.home
+	if command == "" || command == HomeAuto {
+		command = "containers"
+		if a.info.Swarm.Manager && a.registry.Has("services") {
+			command = "services"
+		}
+	}
+	res, err := a.registry.Lookup(command)
+	if err != nil {
+		return fmt.Errorf("home view %q is not a view: %w", command, err)
+	}
+	a.ShowResource(res)
+	return nil
+}
 
 // Close releases the current connection. Call it after Run returns.
 func (a *App) Close() {
