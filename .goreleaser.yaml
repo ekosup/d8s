@@ -1,0 +1,60 @@
+# Release build. `make release-snapshot` runs it locally without publishing;
+# a tagged release is published by running goreleaser with a token.
+version: 2
+project_name: d8s
+
+builds:
+  - main: ./cmd/d8s
+    binary: d8s
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/ekosup/d8s/internal/version.Version={{ .Env.D8S_VERSION }}
+      - -X github.com/ekosup/d8s/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/ekosup/d8s/internal/version.Date={{ .Date }}
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+      - windows_amd64
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - docs/PRD.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ .Env.D8S_VERSION }}"
+
+nfpms:
+  - package_name: d8s
+    homepage: https://github.com/ekosup/d8s
+    maintainer: '{{ envOrDefault "D8S_MAINTAINER" "d8s maintainers <maintainers@d8s.invalid>" }}'
+    description: Terminal UI for Docker Engine and Docker Swarm, in the manner of k9s.
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+
+homebrew_casks:
+  - name: d8s
+    homepage: https://github.com/ekosup/d8s
+    description: Terminal UI for Docker Engine and Docker Swarm
+    repository:
+      owner: ekosup
+      name: homebrew-tap
+    skip_upload: true
+
+changelog:
+  disable: true

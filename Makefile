@@ -9,6 +9,8 @@ LDFLAGS := -s -w -X $(PKG).Version=$(VERSION) -X $(PKG).Commit=$(COMMIT) -X $(PK
 TOOLS         := $(CURDIR)/bin/tools
 GOLANGCI      := $(TOOLS)/golangci-lint
 GOLANGCI_VER  := v2.14.0
+GORELEASER    := $(TOOLS)/goreleaser
+GORELEASER_VER := v2.18.2
 
 DEMO_IMAGE := nginx:alpine
 
@@ -26,6 +28,7 @@ lint: $(GOLANGCI) ## gofmt + golangci-lint
 
 tools: ## install development tools into bin/tools
 	GOBIN=$(TOOLS) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VER)
+	GOBIN=$(TOOLS) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VER)
 
 $(GOLANGCI):
 	@echo "golangci-lint missing: run 'make tools'"; exit 1
@@ -60,6 +63,10 @@ test-matrix: ## integration tests against the oldest supported and the latest en
 
 bench: ## measure against the performance targets, with synthetic data
 	@set -o pipefail; go test -tags bench -count=1 -v -run TestPerformanceTargets ./internal/ui/ | grep -vE '^(=== RUN|--- PASS|PASS$$|ok )'
+
+release-snapshot: ## build every release artefact into dist/, publishing nothing
+	@test -x $(GORELEASER) || { echo "goreleaser missing: run 'make tools'"; exit 1; }
+	D8S_VERSION=$(VERSION) $(GORELEASER) release --snapshot --clean --skip=publish
 
 clean:
 	rm -rf bin/d8s dist
