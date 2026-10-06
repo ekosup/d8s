@@ -16,6 +16,10 @@ func runeBinding(r rune, label, desc string, do func()) binding {
 	return binding{key: tcell.KeyRune, r: r, label: label, desc: desc, do: do}
 }
 
+func keyBinding(key tcell.Key, label, desc string, do func()) binding {
+	return binding{key: key, label: label, desc: desc, do: do}
+}
+
 func (b binding) matches(ev *tcell.EventKey) bool {
 	if ev.Key() != b.key {
 		return false
