@@ -353,6 +353,9 @@ func (a *App) drawHeader() {
 	if a.policy.ReadOnly {
 		info = append(info, [2]string{"Mode", "READ-ONLY"})
 	}
+	if a.stale {
+		info = append(info, [2]string{"Daemon", "DISCONNECTED"})
+	}
 	labelWidth, infoWidth := 0, 0
 	for _, f := range info {
 		labelWidth = max(labelWidth, len(f[0])+1)

@@ -23,6 +23,8 @@ type tableView struct {
 	// note, when set, supplies a remark for the title about how the list
 	// is narrowed at the source, such as "active only".
 	note func() string
+	// stale is set while the rows are from before the daemon stopped answering.
+	stale bool
 
 	natural  []int // width each column wants, from the last refresh
 	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
@@ -180,6 +182,9 @@ func (v *tableView) titleText() string {
 	t := fmt.Sprintf(" %s[%d] ", name, total)
 	if f := v.model.FilterText(); f != "" {
 		t = fmt.Sprintf(" %s[%d/%d] </%s> ", name, len(v.shown), total, tview.Escape(f))
+	}
+	if v.stale {
+		t += "(stale) "
 	}
 	if n := len(v.marks); n > 0 {
 		t += fmt.Sprintf("(%d marked) ", n)

@@ -52,7 +52,10 @@ func (a *App) resourcePage(res resource.Resource) *page {
 		a.gen++
 		gen := a.gen
 		a.view = view
-		a.stale = false
+		if a.stale {
+			a.stale = false
+			a.drawHeader()
+		}
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())
 		a.cancelWatch = cancel
@@ -101,14 +104,27 @@ func (a *App) applySnapshot(gen int, view *tableView, s store.Snapshot) {
 		}
 		// Keep the last good rows on screen; they are better than nothing.
 		a.Flash(flashError, "refresh failed: "+s.Err.Error())
-		a.stale = true
+		a.setStale(view, true)
 		return
 	}
 	view.SetRows(s.Rows)
 	if a.stale {
 		a.clearFlash()
-		a.stale = false
+		a.setStale(view, false)
 	}
+}
+
+// setStale marks, or unmarks, the view as showing data from before the
+// daemon stopped answering. The header says so too; both clear on the
+// first refresh that works again, which the watcher keeps attempting.
+func (a *App) setStale(view *tableView, stale bool) {
+	if a.stale == stale && view.stale == stale {
+		return
+	}
+	a.stale = stale
+	view.stale = stale
+	view.refresh()
+	a.drawHeader()
 }
 
 func (a *App) stopWatch() {
