@@ -9,7 +9,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixtures="$root/test/fixtures/swarm"
 
-image="${D8S_DIND_IMAGE:-docker:27-dind}"
+image="${D8S_DIND_IMAGE:-public.ecr.aws/docker/library/docker:27-dind}"
 workload="${D8S_DEMO_IMAGE:-nginx:alpine}"
 net="d8s-swarm-net"
 manager_ctx="d8s-swarm"

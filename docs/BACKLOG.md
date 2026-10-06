@@ -258,62 +258,81 @@ make test-integration   # test klien Docker terhadap cluster itu
 
 ### Story
 
-- [ ] **D8S-039 — Mode read-only lewat `--readonly` dan per konteks** `UX · P0 · S`
+- [x] **D8S-039 — Mode read-only lewat `--readonly` dan per konteks** `UX · P0 · S`
   - Terima: semua aksi yang mengubah keadaan ditolak di eksekutor, bukan hanya disembunyikan di UI.
-- [ ] **D8S-047 — Penanganan putus koneksi dan reconnect otomatis** `Koneksi · P0 · M`
+- [x] **D8S-047 — Penanganan putus koneksi dan reconnect otomatis** `Koneksi · P0 · M`
   - Terima: header menandai koneksi putus; data lama diberi tanda basi; view pulih tanpa restart.
-- [ ] **D8S-038 — File konfigurasi: interval refresh, view awal, buffer log, shell default** `UX · P1 · S`
+- [x] **D8S-038 — File konfigurasi: interval refresh, view awal, buffer log, shell default** `UX · P1 · S`
   - Terima: konfigurasi tidak valid menghasilkan pesan yang menunjuk barisnya; tanpa file, default berlaku.
-- [ ] **D8S-040 — Skin dan dukungan `NO_COLOR`** `UX · P1 · M`
+- [x] **D8S-040 — Skin dan dukungan `NO_COLOR`** `UX · P1 · M`
   - Terima: skin terang dan gelap bawaan; semua status tetap terbaca tanpa warna.
-- [ ] **D8S-044 — Matriks integration test terhadap beberapa versi Docker Engine** `Kualitas · P0 · M`
-  - Terima: `make test-matrix` menjalankan integration test terhadap engine 20.10 (API 1.41) dan engine terbaru, masing-masing sebagai container docker-in-docker di VM dev.
-- [ ] **D8S-046 — Uji performa dengan 2.000 container dan 500 service sintetis** `Kualitas · P1 · M`
+- [x] **D8S-044 — Matriks integration test terhadap beberapa versi Docker Engine** `Kualitas · P0 · M`
+  - Terima: `make test-matrix` menjalankan integration test terhadap engine 20.10 (API 1.41) dan engine terbaru, masing-masing sebagai cluster docker-in-docker tiga node di VM dev.
+- [x] **D8S-046 — Uji performa dengan 2.000 container dan 500 service sintetis** `Kualitas · P1 · M`
   - Terima: `make bench` mengukur terhadap klien palsu berisi data sintetis; target di PRD terpenuhi atau selisihnya dicatat.
-- [ ] **D8S-043 — Pipeline rilis: build lima target, checksum, Homebrew, deb, rpm** `Kualitas · P0 · M`
+- [x] **D8S-043 — Pipeline rilis: build lima target, checksum, Homebrew, deb, rpm** `Kualitas · P0 · M`
   - Terima: `make release-snapshot` menghasilkan semua artefak di `dist/` tanpa mempublikasikan apa pun; `d8s version` menampilkan versi dan commit.
-- [ ] **D8S-045 — Dokumentasi: README, instalasi, daftar tombol, demo, panduan untuk pengguna k9s** `Kualitas · P0 · S`
+- [x] **D8S-045 — Dokumentasi: README, instalasi, daftar tombol, demo, panduan untuk pengguna k9s** `Kualitas · P0 · S`
   - Terima: pengguna baru bisa memasang dan membuka log container hanya dari README.
-- [ ] **D8S-041 — Alias dan hotkey kustom** `UX · P2 · S`
+- [x] **D8S-041 — Alias dan hotkey kustom** `UX · P2 · S`
   - Terima: hotkey kustom yang bentrok dengan bawaan dilaporkan saat startup.
-- [ ] **D8S-042 — Kolom kustom dan sort tersimpan per view** `UX · P2 · M`
+- [x] **D8S-042 — Kolom kustom dan sort tersimpan per view** `UX · P2 · M`
   - Terima: pilihan kolom dan sort bertahan antarsesi.
-- [ ] **D8S-048 — Log debug lewat `--log-file` dan perintah `d8s info`** `Kualitas · P2 · S`
+- [x] **D8S-048 — Log debug lewat `--log-file` dan perintah `d8s info`** `Kualitas · P2 · S`
   - Terima: `d8s info` mencetak versi, konteks, versi API, dan lokasi konfigurasi.
 
 ### Build
 
 ```bash
-make tools              # menambah goreleaser
+make tools              # menambah goreleaser ke bin/tools (±1 menit)
 make build
 make test lint
-make test-matrix        # engine 20.10 dan terbaru lewat docker-in-docker
-make bench
-make release-snapshot   # dist/: 5 binary, checksum, .deb, .rpm
+./bin/d8s version       # v1.0.0
+make bench              # ±10 detik
+make test-matrix        # ±2 menit; membangun ulang cluster uji untuk tiap versi engine, lalu menghapusnya
+make release-snapshot   # ±20 detik; mengisi dist/
 ```
 
 ### Cek di VM dev
 
-1. `ls dist/` memuat binary untuk linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64, berkas checksum, satu `.deb`, dan satu `.rpm`.
-2. Pasang paketnya dalam container bersih: `docker run --rm -v $PWD/dist:/dist debian:stable sh -c 'dpkg -i /dist/d8s_*_amd64.deb && d8s version'` mencetak v1.0.0. VM sendiri tidak diubah.
-3. `make test-matrix` berakhir hijau untuk kedua versi engine.
-4. `make bench` mencetak waktu ke tabel pertama, memori, dan CPU diam, masing-masing dengan lulus atau gagal terhadap target PRD.
-5. `make demo-up`, lalu `./bin/d8s --readonly`. Header menampilkan `READ-ONLY`; `Ctrl-d` pada `d8s-demo-web` ditolak dengan pesan dan container tetap ada.
-6. Set view awal ke `images` di `~/.config/d8s/config.yaml`; d8s langsung terbuka di view image. Rusak satu baris YAML; pesan error menyebut nomor barisnya. Kembalikan.
-7. Ganti skin di konfigurasi; warna berubah. `NO_COLOR=1 ./bin/d8s` tampil tanpa warna dan state container tetap terbedakan.
-8. Tambah alias kustom di konfigurasi, ketik aliasnya; view yang dituju terbuka.
-9. Sembunyikan satu kolom dan ubah sort, keluar, buka lagi; pilihan itu masih berlaku.
-10. `./bin/d8s info` mencetak versi, konteks, versi API, dan lokasi konfigurasi. `--log-file /tmp/d8s.log` menghasilkan berkas log.
-11. **Reconnect.** `make swarm-up`, buka d8s di context `d8s-swarm`, lalu `docker restart` container manager-nya. Header menandai terputus, lalu tabel pulih sendiri. Daemon utama VM tidak di-restart.
-12. Ulangi cek M1 dan M2 dengan binary dari `dist/`.
-13. Ikuti README dari awal sampai membuka log satu container, tanpa bantuan lain.
+1. `ls dist/` memuat arsip untuk linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 (`.tar.gz`) dan windows/amd64 (`.zip`), `checksums.txt`, dua `.deb`, dua `.rpm`, dan `homebrew/Casks/d8s.rb`.
+2. Pasang paketnya di container bersih, tanpa mengubah VM:
+   ```bash
+   docker run --rm -v $PWD/dist:/dist public.ecr.aws/docker/library/debian:stable-slim \
+     sh -c 'dpkg -i /dist/d8s_1.0.0_linux_amd64.deb && d8s version'
+   ```
+   Keluarannya `d8s v1.0.0 (…)`.
+3. `make test-matrix` berakhir dengan tabel dua baris `pass`: engine 20.10 (API 1.41) dan engine terbaru.
+4. `make bench` mencetak enam ukuran, semuanya `pass`.
+5. `make demo-up`, lalu `./bin/d8s --readonly`. Header menampilkan `Mode: READ-ONLY`. `r`, `x`, dan `Ctrl-d` pada `d8s-demo-web` ditolak dengan pesan dan tanpa dialog; `s` (shell) juga ditolak; `l`, `d`, dan `h` tetap berfungsi. Container tetap ada.
+6. Buat `~/.config/d8s/config.yaml` berisi `defaultView: images`; d8s langsung terbuka di view image. Tambahkan baris `refesh: 5s` (salah ketik); d8s menolak jalan dan menyebut `line 2` beserta barisnya. `d8s info` melaporkan hal yang sama. Hapus baris itu.
+7. Tambahkan `skin: light`; warna berganti dan tetap terbaca di terminal berlatar terang. `NO_COLOR=1 ./bin/d8s` tampil tanpa warna: baris terpilih terbalik, container `exited` redup.
+8. Tambahkan ke konfigurasi:
+   ```yaml
+   aliases:
+     ng: images /nginx
+     c: images
+   hotkeys:
+     f2: ng
+     r: images
+   ```
+   Saat mulai, baris status melaporkan bahwa alias `c` dan hotkey `r` bentrok dan diabaikan. `F2` membuka image tersaring `nginx`. `?` mencantumkan `<:ng>` di COMMANDS dan `<f2>` di HOTKEYS.
+9. Tambahkan `views: {containers: {columns: [NAME, STATE, CPU%, MEM]}}`; `:c` hanya menampilkan empat kolom itu. `Shift-m` dua kali, `:q`, buka lagi: `:c` masih terurut menurut `MEM↓`.
+10. `./bin/d8s info` mencetak versi, lokasi dan status konfigurasi, lokasi state, context, host, engine, API, dan peran Swarm. `./bin/d8s --log-file /tmp/d8s.log`, lakukan satu aksi, keluar; berkasnya memuat baris `started` dan `action`.
+11. **Reconnect.** `make swarm-up`, `./bin/d8s --context d8s-swarm`, `:svc`. Dari terminal lain `docker restart d8s-swarm-manager` (tanpa `-t`). Dalam dua detik header menampilkan `Daemon: DISCONNECTED` dan judul tabel `(stale)`, baris lama tetap terlihat. Sekitar 25 detik kemudian keduanya hilang sendiri dan tabel memuat keadaan baru. Daemon utama VM tidak di-restart.
+12. Tambahkan `contexts: {d8s-swarm: {readOnly: true, production: true}}`. Di context `default` semua aksi jalan; setelah `:ctx` ke `d8s-swarm`, header menampilkan `d8s-swarm (production)` dan `READ-ONLY`, dan scale ditolak.
+13. Ulangi cek M1 dan M2 dengan binary dari `dist/d8s_linux_amd64_v1/d8s`.
+14. Ikuti `README.md` dari "Pasang" sampai "Lima menit pertama" tanpa bantuan lain.
+15. `make demo-down && make swarm-down`, dan hapus `~/.config/d8s/config.yaml` bila tidak ingin dipakai terus.
 
 **Tidak bisa dicek di VM ini:**
 
-- Binary macOS dan Windows hanya terbukti ter-build, tidak dijalankan.
-- Formula Homebrew hanya terbukti ter-generate.
-- Paket `.rpm` bisa dicek dengan cara yang sama seperti `.deb` memakai image `fedora`, bila diinginkan.
-- Publikasi ke GitHub Releases butuh repo dan token; di luar VM.
+- Binary macOS dan Windows hanya terbukti ter-build. Shell interaktif butuh `/dev/tty`, jadi di Windows belum berfungsi; README menyebutnya.
+- Cask Homebrew hanya terbukti ter-generate.
+- Publikasi ke GitHub Releases butuh token dan dijalankan di luar VM.
+- Paket `.rpm` bisa dicek seperti `.deb` dengan image `public.ecr.aws/docker/library/fedora`, bila diinginkan.
+
+**Catatan:** `make test-matrix` dan `make swarm-up` menarik image dari mirror publik (`public.ecr.aws`), karena Docker Hub membatasi tarikan anonim. Me-restart container docker-in-docker dengan paksa (`docker restart -t 1`) bisa membuat daemon di dalamnya tidak hidup lagi; itu sifat cluster uji, bukan d8s. `make swarm-up` membangunnya ulang.
 
 ---
 
