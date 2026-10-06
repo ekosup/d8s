@@ -105,3 +105,19 @@ func TestRegistryRegisterRejects(t *testing.T) {
 		})
 	}
 }
+
+func TestRegistryAllKeepsRegistrationOrder(t *testing.T) {
+	reg := newRegistry(t, stub("zebra"), stub("apple", "a"), stub("mango"))
+	var names []string
+	for _, r := range reg.All() {
+		names = append(names, r.Name)
+	}
+	if !slices.Equal(names, []string{"zebra", "apple", "mango"}) {
+		t.Fatalf("got %v", names)
+	}
+	// The result is a copy.
+	reg.All()[0].Name = "changed"
+	if reg.All()[0].Name != "zebra" {
+		t.Fatal("All exposed the registry's own slice")
+	}
+}

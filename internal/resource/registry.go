@@ -17,6 +17,7 @@ var (
 type Registry struct {
 	byName map[string]Resource
 	byCmd  map[string]string // name or alias -> canonical name
+	order  []string          // canonical names, as registered
 }
 
 // NewRegistry returns an empty registry.
@@ -42,6 +43,7 @@ func (r *Registry) Register(res Resource) error {
 		}
 	}
 	r.byName[res.Name] = res
+	r.order = append(r.order, res.Name)
 	for _, c := range cmds {
 		r.byCmd[strings.ToLower(c)] = res.Name
 	}
@@ -85,5 +87,14 @@ func (r *Registry) Complete(prefix string) []string {
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// All returns every resource in the order it was registered.
+func (r *Registry) All() []Resource {
+	out := make([]Resource, 0, len(r.order))
+	for _, name := range r.order {
+		out = append(out, r.byName[name])
+	}
 	return out
 }
