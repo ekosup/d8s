@@ -25,6 +25,8 @@ type tableView struct {
 	note func() string
 	// stale is set while the rows are from before the daemon stopped answering.
 	stale bool
+	// onSort, when set, is told about a sort the user chose.
+	onSort func(column string, desc bool)
 
 	natural  []int // width each column wants, from the last refresh
 	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
@@ -98,6 +100,10 @@ func (v *tableView) bindings() []binding {
 			func() {
 				v.model.SortBy(k.col)
 				v.refresh()
+				if v.onSort != nil {
+					col, desc := v.model.Sort()
+					v.onSort(v.model.cols[col].Name, desc)
+				}
 			})
 		b.group = groupSort
 		out = append(out, b)

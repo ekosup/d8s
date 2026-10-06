@@ -107,8 +107,10 @@ type App struct {
 	copy    func(data []byte) // puts text on the clipboard
 	screen  tcell.Screen      // the live screen, once drawing has started
 
-	aliases   map[string]string // user-defined commands: name -> "view" or "view /filter"
-	hotkeys   []binding         // user-defined keys that run a command
+	views     map[string][]string // user-chosen columns per view
+	sorts     SortStore           // remembered sort per view; may be nil
+	aliases   map[string]string   // user-defined commands: name -> "view" or "view /filter"
+	hotkeys   []binding           // user-defined keys that run a command
 	client    docker.Client
 	policyFor func(context string) Policy // what the user decided per context
 	policy    Policy                      // the one in force for the current connection

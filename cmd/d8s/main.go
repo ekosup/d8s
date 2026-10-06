@@ -227,13 +227,22 @@ func runUI(o options) error {
 		ui.WithLogSettings(cfg.LogBuffer, cfg.LogTail),
 		ui.WithShell(cfg.Shell),
 		ui.WithLogger(logger),
+		ui.WithSortStore(config.OpenState(filepath.Join(ui.StateDir(os.Getenv), "state.yaml"))),
 		ui.WithPolicy(func(context string) ui.Policy {
 			p := cfg.Policy(context, o.readOnly)
 			return ui.Policy{ReadOnly: p.ReadOnly, Production: p.Production}
 		}),
 	)
 	defer app.Close()
+
+	views := make(map[string][]string, len(cfg.Views))
+	for name, v := range cfg.Views {
+		views[name] = v.Columns
+	}
+	warnings := append(app.SetCustom(cfg.Aliases, cfg.Hotkeys), app.SetViews(views)...)
+
 	app.ShowResource(home)
+	app.ShowWarnings(warnings)
 	return app.Run()
 }
 

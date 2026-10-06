@@ -37,9 +37,11 @@ func (a *App) resourcePage(res resource.Resource) *page {
 	if res.Swarm && !a.info.Swarm.Manager {
 		return a.notManagerPage(res)
 	}
+	res = a.customised(res)
 	view := newTableView(res.Title, res.Columns)
 	view.note = res.Note
 	view.SetSort(res.SortColumn, res.SortDesc)
+	a.restoreSort(res, view)
 	var cancel context.CancelFunc
 	stop := func() {
 		if cancel != nil {
