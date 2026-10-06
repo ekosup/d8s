@@ -2,11 +2,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/ekosup/d8s/internal/docker"
 	"github.com/ekosup/d8s/internal/version"
 )
+
+const connectTimeout = 5 * time.Second
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -20,5 +25,32 @@ func run(args []string) error {
 		fmt.Println(version.String())
 		return nil
 	}
-	return fmt.Errorf("nothing to run yet; try `d8s version`")
+
+	client, info, err := connect()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	fmt.Printf("context: %s\nhost:    %s\nengine:  %s\napi:     %s\n", info.Context, info.Host, info.ServerVersion, info.APIVersion)
+	return nil
+}
+
+func connect() (docker.Client, docker.Info, error) {
+	ep, err := docker.ResolveEndpoint(os.Getenv)
+	if err != nil {
+		return nil, docker.Info{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+	client, err := docker.Connect(ctx, ep)
+	if err != nil {
+		return nil, docker.Info{}, err
+	}
+	info, err := client.Info(ctx)
+	if err != nil {
+		_ = client.Close()
+		return nil, docker.Info{}, err
+	}
+	return client, info, nil
 }
