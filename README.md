@@ -1,6 +1,8 @@
 # d8s
 
-TUI untuk Docker Engine dan Docker Swarm, dengan cara pakai seperti [k9s](https://k9scli.io): tabel yang selalu live, navigasi keyboard, perintah `:`, dan filter `/`.
+[Bahasa Indonesia](README.id.md)
+
+A terminal UI for Docker Engine and Docker Swarm that works the way [k9s](https://k9scli.io) does: tables that stay live, keyboard navigation, `:` commands and `/` filters.
 
 ```text
  Context: prod-swarm         <:>      Command mode   <enter>  Open       <r>      Restart
@@ -18,233 +20,234 @@ TUI untuk Docker Engine dan Docker Swarm, dengan cara pakai seperti [k9s](https:
  <stacks> <services>                                                    Scale shop_api: done
 ```
 
-d8s hanya berbicara ke Docker API. Tidak ada yang dipasang di server, dan binary `docker` tidak dibutuhkan.
+d8s talks to the Docker API and nothing else. Nothing is installed on your servers, and the `docker` binary is not needed.
 
-## Pasang
+## Install
 
-Dari halaman [Releases](https://github.com/ekosup/d8s/releases), ambil berkas untuk platform Anda:
+From the [Releases](https://github.com/ekosup/d8s/releases) page, take the file for your platform:
 
 ```bash
 # Debian / Ubuntu
-sudo dpkg -i d8s_<versi>_linux_amd64.deb
+sudo dpkg -i d8s_<version>_linux_amd64.deb
 
 # Fedora / RHEL
-sudo rpm -i d8s_<versi>_linux_amd64.rpm
+sudo rpm -i d8s_<version>_linux_amd64.rpm
 
-# Linux atau macOS, tanpa paket
-tar -xzf d8s_<versi>_linux_amd64.tar.gz && sudo mv d8s /usr/local/bin/
+# Linux or macOS, without a package
+tar -xzf d8s_<version>_linux_amd64.tar.gz && sudo mv d8s /usr/local/bin/
 ```
 
-Atau dari sumber, dengan Go 1.24 ke atas:
+Or from source, with Go 1.24 or later:
 
 ```bash
 go install github.com/ekosup/d8s/cmd/d8s@latest
 ```
 
-Atau dari salinan repo ini, ke `~/.local/bin` (atau `PREFIX` lain):
+Or from a checkout of this repository, into `~/.local/bin` (or another `PREFIX`):
 
 ```bash
 make install
 ```
 
-Periksa hasilnya:
+Check the result:
 
 ```bash
 d8s version
-d8s info        # versi, context, engine, dan lokasi berkas yang dipakai
+d8s info        # version, context, engine, and the files in use
 ```
 
-d8s memakai Docker context yang sedang aktif, sama seperti `docker`. Kalau `docker ps` jalan di terminal Anda, `d8s` juga.
+d8s uses the active Docker context, like `docker` does. If `docker ps` works in your terminal, so does `d8s`.
 
-## Lima menit pertama
+## The first five minutes
 
-1. Jalankan `d8s`. Daftar container tampil dan memperbarui diri sendiri. (Bila terhubung ke manager Swarm, yang tampil lebih dulu adalah daftar service; `:c` membuka container.)
-2. Gerakkan sorotan dengan `j` / `k` atau panah.
-3. Tekan `l` untuk melihat log container yang disorot. `Esc` untuk kembali.
-4. Tekan `/`, ketik sebagian nama, `Enter` untuk menyaring. `Esc` menghapus saringan.
-5. Tekan `:` lalu ketik `i` dan `Enter` untuk pindah ke daftar image.
-6. Tekan `?` kapan saja untuk melihat semua tombol dan perintah.
-7. `:q` atau `Ctrl-c` untuk keluar.
+1. Run `d8s`. The container list appears and keeps itself up to date. (Connected to a Swarm manager, the service list comes first; `:c` opens containers.)
+2. Move the highlight with `j` / `k` or the arrow keys.
+3. Press `l` to see the logs of the highlighted container. `Esc` goes back.
+4. Press `/`, type part of a name, `Enter` to filter. `Esc` clears the filter.
+5. Press `:`, type `i` and `Enter` to switch to the image list.
+6. Press `?` at any time for every key and command.
+7. `:q` or `Ctrl-c` quits.
 
-## Perintah
+## Commands
 
-Ketik `:` diikuti salah satu dari ini. Nama lengkap dan awalan yang unik juga diterima (`:containers`, `:cont`).
+Type `:` followed by one of these. Full names and unique prefixes work too (`:containers`, `:cont`).
 
-| Perintah | View | Butuh Swarm |
+| Command | View | Needs Swarm |
 | --- | --- | --- |
-| `:c` | Container | |
-| `:i` | Image | |
-| `:v` | Volume | |
-| `:n` | Network | |
-| `:cp` | Project Compose | |
-| `:df` | Pemakaian disk | |
-| `:ctx` | Docker context | |
-| `:ev` | Event daemon | |
-| `:svc` | Service | ya |
-| `:ts` | Task | ya |
-| `:no` | Node | ya |
-| `:stk` | Stack | ya |
-| `:sec` | Secret | ya |
-| `:cfg` | Config | ya |
+| `:c` | Containers | |
+| `:i` | Images | |
+| `:v` | Volumes | |
+| `:n` | Networks | |
+| `:cp` | Compose projects | |
+| `:df` | Disk usage | |
+| `:ctx` | Docker contexts | |
+| `:ev` | Daemon events | |
+| `:svc` | Services | yes |
+| `:ts` | Tasks | yes |
+| `:no` | Nodes | yes |
+| `:stk` | Stacks | yes |
+| `:sec` | Secrets | yes |
+| `:cfg` | Configs | yes |
 
-## Tombol
+## Keys
 
-Header selalu menampilkan tombol yang berlaku di view yang sedang dibuka, dan `?` menampilkan semuanya.
+The header always shows the keys of the view you are in, and `?` shows all of them.
 
-**Di mana saja**
+**Everywhere**
 
-| Tombol | Fungsi |
+| Key | Does |
 | --- | --- |
-| `:` | Perintah |
-| `/` | Saring tabel, atau cari di log dan inspect |
-| `?` | Bantuan |
-| `Enter` | Masuk ke isi baris (misalnya dari service ke task-nya) |
-| `Esc` | Kembali; menghapus saringan dan tanda lebih dulu |
-| `d`, `y` | Inspect sebagai JSON, atau YAML |
-| `Shift` + huruf | Urutkan menurut kolom; tekan lagi untuk membalik |
-| `Space` | Tandai baris untuk aksi massal |
-| `Ctrl-d` | Hapus, dengan konfirmasi |
+| `:` | Command |
+| `/` | Filter a table, or search in logs and inspect output |
+| `?` | Help |
+| `Enter` | Open what the row contains (from a service to its tasks, for example) |
+| `Esc` | Back; clears a filter and marks first |
+| `d`, `y` | Inspect as JSON, or as YAML |
+| `Shift` + letter | Sort by a column; again to reverse |
+| `Space` | Mark rows for a bulk action |
+| `Ctrl-d` | Delete, after confirmation |
 
-**Container**
+**Containers**
 
-| Tombol | Fungsi |
+| Key | Does |
 | --- | --- |
-| `l` | Log |
-| `s` | Shell (mencoba `bash`, lalu `sh`) |
-| `m` | Statistik CPU, memori, jaringan, dan disk yang live |
-| `a`, `x`, `r`, `p` | Start, stop, restart, pause atau resume |
+| `l` | Logs |
+| `s` | Shell (tries `bash`, then `sh`) |
+| `m` | Live CPU, memory, network and disk statistics |
+| `a`, `x`, `r`, `p` | Start, stop, restart, pause or resume |
 | `Ctrl-k` | Kill |
-| `h` | Sembunyikan atau tampilkan container yang tidak aktif |
+| `h` | Hide or show inactive containers |
 
-**Log dan inspect**
+**Logs and inspect**
 
-| Tombol | Fungsi |
+| Key | Does |
 | --- | --- |
-| `n`, `Shift-n` | Hasil cari berikut, sebelumnya |
-| `w` | Bungkus baris panjang |
-| `s` | Jeda atau lanjutkan autoscroll |
-| `t` | Tampilkan timestamp |
-| `0`–`5` | Rentang: 1.000 baris terakhir, 1, 5, 15, 30 menit, 1 jam |
-| `c` | Salin ke clipboard |
-| `Ctrl-s` | Simpan ke `~/.local/state/d8s/dumps/` |
+| `n`, `Shift-n` | Next and previous search hit |
+| `w` | Wrap long lines |
+| `s` | Pause or resume autoscroll |
+| `t` | Show timestamps |
+| `0`–`5` | Range: last 1,000 lines, 1, 5, 15, 30 minutes, 1 hour |
+| `c` | Copy to the clipboard |
+| `Ctrl-s` | Save to `~/.local/state/d8s/dumps/` |
 
 **Swarm**
 
-| View | Tombol | Fungsi |
+| View | Key | Does |
 | --- | --- | --- |
 | Service | `s` | Scale |
-| Service | `i` | Ganti image |
-| Service | `r` | Restart semua task |
-| Service | `u` | Rollback ke spesifikasi sebelumnya |
-| Service | `o` | Pantau rollout: task baru dan lama, status, pesan jeda |
-| Service, task | `l` | Log lewat manager, tiap baris berawalan `task@node` |
-| Task | `h` | Sembunyikan atau tampilkan riwayat task |
-| Task | `s` | Shell, bila container ada di node yang terhubung |
+| Service | `i` | Change the image |
+| Service | `r` | Restart every task |
+| Service | `u` | Roll back to the previous spec |
+| Service | `o` | Watch a rollout: new and old tasks, status, pause message |
+| Service, task | `l` | Logs through the manager, each line prefixed `task@node` |
+| Task | `h` | Hide or show task history |
+| Task | `s` | Shell, when the container is on the connected node |
 | Node | `a` | Availability: active, pause, drain |
-| Node | `p` | Promote atau demote |
-| Node | `b` | Pasang (`kunci=nilai`) atau hapus (`kunci-`) label |
+| Node | `p` | Promote or demote |
+| Node | `b` | Set (`key=value`) or remove (`key-`) a label |
 
-Menghapus service atau stack meminta namanya diketik.
+Deleting a service or a stack asks you to type its name.
 
 ## Swarm
 
-View Swarm butuh koneksi ke node **manager**. Dari satu manager, seluruh cluster terlihat dan bisa dioperasikan, termasuk log task di node lain.
+Swarm views need a connection to a **manager** node. From one manager the whole cluster is visible and can be operated, including the logs of tasks on other nodes.
 
-Dua hal hanya menjangkau container di node yang sedang terhubung, karena begitulah Docker API bekerja: shell dan statistik. Untuk task di node lain, d8s menjelaskan sebabnya dan, bila ada Docker context yang namanya sama dengan hostname node itu, menawarkan pindah ke sana.
+Two things only reach containers on the node you are connected to, because that is how the Docker API works: shells and statistics. For a task on another node d8s explains why and, when a Docker context is named like that node's hostname, offers to switch to it. For the same reason the container list (`:c`) shows the containers of the connected node only; the cluster as a whole is in `:svc`, `:ts` and `:stk`.
 
-Menghubungkan ke server lain memakai Docker context biasa:
+Connecting to another server uses an ordinary Docker context:
 
 ```bash
 docker context create prod --docker host=ssh://user@manager.example.com
 d8s --context prod
 ```
 
-Di dalam d8s, `:ctx` lalu `Enter` berpindah context tanpa keluar.
+Inside d8s, `:ctx` then `Enter` switches context without leaving.
 
-## Mode read-only
+## Read-only mode
 
 ```bash
 d8s --readonly
 ```
 
-Semua aksi yang mengubah keadaan ditolak, termasuk shell; melihat, mencari, dan membaca log tetap bisa. Header menampilkan `READ-ONLY`. Mode ini juga bisa dipasang permanen per context lewat konfigurasi.
+Every action that changes something is refused, shells included; looking, searching and reading logs still work. The header shows `READ-ONLY`. The mode can also be made permanent per context in the configuration.
 
-## Konfigurasi
+## Configuration
 
-Opsional. Berkasnya `~/.config/d8s/config.yaml` (atau `$XDG_CONFIG_HOME/d8s/config.yaml`, atau path di `--config` / `$D8S_CONFIG`). Tanpa berkas, nilai bawaan di bawah ini yang berlaku.
+Optional. The file is `~/.config/d8s/config.yaml` (or `$XDG_CONFIG_HOME/d8s/config.yaml`, or the path given by `--config` / `$D8S_CONFIG`). Without a file, the defaults below apply.
 
 ```yaml
-refresh: 2s              # seberapa sering view memeriksa ulang; minimal 500ms
-defaultView: auto        # view pertama; auto = service di manager Swarm, selain itu container
-logBuffer: 5000          # baris yang disimpan satu halaman log
-logTail: 1000            # baris yang diambil saat log dibuka
-shell: ""                # shell di container; kosong = bash, lalu sh
-readOnly: false          # tolak semua perubahan, di semua context
-skin: dark               # dark, light, atau mono
+refresh: 2s              # how often a view checks again; at least 500ms
+defaultView: auto        # first view; auto = services on a Swarm manager, containers otherwise
+logBuffer: 5000          # lines a log page keeps
+logTail: 1000            # lines fetched when a log page opens
+shell: ""                # shell in containers; empty = bash, then sh
+readOnly: false          # refuse every change, on every context
+skin: dark               # dark, light, or mono
 
 contexts:
   prod:
-    readOnly: true       # context ini selalu read-only
-    production: true     # ditandai di header
+    readOnly: true       # this context is always read-only
+    production: true     # marked in the header
 
 aliases:
-  web: services /shop_web   # :web membuka service, tersaring
+  web: services /shop_web   # :web opens services, filtered
 
 hotkeys:
-  f2: svc                   # F2 menjalankan :svc
+  f2: svc                   # F2 runs :svc
   ctrl-w: web
 
 views:
   containers:
-    columns: [NAME, STATE, CPU%, MEM, AGE]   # kolom yang tampil, berurutan
+    columns: [NAME, STATE, CPU%, MEM, AGE]   # columns to show, in this order
 ```
 
-Kesalahan di berkas ini dilaporkan beserta nomor barisnya, dan d8s tidak mau jalan sampai diperbaiki. Alias atau hotkey yang bentrok dengan bawaan diabaikan dan dilaporkan saat mulai.
+A mistake in this file is reported with its line number, and d8s does not start until it is fixed. An alias or hotkey that clashes with a built-in one is ignored and reported at start-up.
 
-Urutan sort tiap view diingat sendiri antarsesi di `~/.local/state/d8s/state.yaml`.
+The sort order of each view is remembered between sessions on its own, in `~/.local/state/d8s/state.yaml`.
 
-**Tanpa warna.** Skin `mono`, atau variabel lingkungan `NO_COLOR`, mematikan semua warna; status tetap terbedakan lewat tebal, garis bawah, dan redup.
+**No colour.** The `mono` skin, or the `NO_COLOR` environment variable, turns all colour off; statuses stay distinguishable through bold, underline and dim.
 
-## Untuk pengguna k9s
+## For k9s users
 
-Yang sama: `:` perintah, `/` saring, `?` bantuan, `Enter` masuk, `Esc` kembali, `d` describe, `y` YAML, `l` log, `s` shell, `Ctrl-d` hapus, `Ctrl-k` kill, `Space` tandai, `Shift` + huruf untuk sort, `:ctx` ganti context.
+The same: `:` commands, `/` filter, `?` help, `Enter` open, `Esc` back, `d` describe, `y` YAML, `l` logs, `s` shell, `Ctrl-d` delete, `Ctrl-k` kill, `Space` mark, `Shift` + letter to sort, `:ctx` to change context.
 
-Yang berbeda:
+Different:
 
-| k9s | d8s | Catatan |
+| k9s | d8s | Note |
 | --- | --- | --- |
-| `:po`, `:deploy` | `:c`, `:svc` | Pod kira-kira container atau task; deployment kira-kira service |
-| `:ns` | — | Docker tidak punya namespace; stack (`:stk`) yang paling dekat |
-| `e` edit | — | d8s tidak mengedit spesifikasi; ada `s` scale dan `i` ganti image |
-| `s` di deployment = scale | `s` di service = scale | Di container, `s` tetap shell |
-| `Ctrl-a` daftar alias | `?` | Daftar perintah ada di layar bantuan |
+| `:po`, `:deploy` | `:c`, `:svc` | A pod is roughly a container or a task; a deployment is roughly a service |
+| `:ns` | — | Docker has no namespaces; a stack (`:stk`) is the closest thing |
+| `e` edit | — | d8s does not edit specs; there is `s` to scale and `i` to change the image |
+| `s` on a deployment = scale | `s` on a service = scale | On a container, `s` is still shell |
+| `Ctrl-a` alias list | `?` | The command list is on the help screen |
 
-## Batasan
+## Limits
 
-- Tidak membuat apa pun: deploy stack, membuat service, secret, atau config dilakukan dengan `docker`.
-- Tidak membangun atau mendorong image.
-- Statistik CPU dan memori hanya untuk container di daemon yang terhubung, dan dimatikan bila lebih dari 100 container berjalan.
-- Shell interaktif butuh `/dev/tty`, jadi belum berfungsi di Windows.
-- Diuji terhadap Docker Engine 20.10 (API 1.41) sampai 29; Podman tidak didukung.
+- It creates nothing: deploying a stack and creating services, secrets or configs is done with `docker`.
+- It does not build or push images.
+- CPU and memory statistics are for containers on the connected daemon only, and are switched off above 100 running containers.
+- The interactive shell needs `/dev/tty`, so it does not work on Windows yet.
+- Tested against Docker Engine 20.10 (API 1.41) through 29; Podman is not supported.
 
-## Pengembangan
+## Development
 
 ```bash
-make tools             # pasang linter dan alat rilis ke bin/tools
+make tools             # install the linter and the release tool into bin/tools
 make build             # bin/d8s
-make test lint         # unit test dan lint
-make demo-up           # container, network, dan volume d8s-demo* untuk dicoba
-make swarm-up          # Swarm tiga node di dalam container, context d8s-swarm
-make test-integration  # test terhadap cluster itu
-make test-matrix       # hal yang sama terhadap engine tertua dan terbaru
-make bench             # ukur terhadap target performa
-make release-snapshot  # semua artefak rilis ke dist/, tanpa mempublikasikan
+make install           # copy it to ~/.local/bin
+make test lint         # unit tests and lint
+make demo-up           # d8s-demo* containers, network and volume to try things on
+make swarm-up          # a three-node Swarm in containers, context d8s-swarm
+make test-integration  # tests against that cluster
+make test-matrix       # the same against the oldest supported and the latest engine
+make bench             # measure against the performance targets
+make release-snapshot  # every release artefact into dist/, publishing nothing
 ```
 
-`make swarm-up` tidak mengubah daemon Anda menjadi anggota Swarm: clusternya hidup di tiga container. Spesifikasi produk ada di [docs/PRD.md](docs/PRD.md) dan rencana kerjanya di [docs/BACKLOG.md](docs/BACKLOG.md).
+`make swarm-up` does not make your own daemon a Swarm member: the cluster lives in three containers. The product specification is in [docs/PRD.md](docs/PRD.md) and the work plan in [docs/BACKLOG.md](docs/BACKLOG.md); both are in Indonesian.
 
-## Lisensi
+## Licence
 
-[0BSD](LICENSE): boleh dipakai, disalin, diubah, dan disebarkan untuk tujuan apa pun, tanpa syarat apa pun, termasuk tanpa kewajiban mencantumkan nama pembuatnya.
+[0BSD](LICENSE): use, copy, modify and distribute it for any purpose, with no conditions at all, not even attribution.
 
-Dipelihara oleh Eko Supriyono <esup0001@gmail.com>.
+Maintained by Eko Supriyono <esup0001@gmail.com>.
