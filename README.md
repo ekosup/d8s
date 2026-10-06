@@ -236,3 +236,9 @@ make release-snapshot  # semua artefak rilis ke dist/, tanpa mempublikasikan
 ```
 
 `make swarm-up` tidak mengubah daemon Anda menjadi anggota Swarm: clusternya hidup di tiga container. Spesifikasi produk ada di [docs/PRD.md](docs/PRD.md) dan rencana kerjanya di [docs/BACKLOG.md](docs/BACKLOG.md).
+
+## Lisensi
+
+[0BSD](LICENSE): boleh dipakai, disalin, diubah, dan disebarkan untuk tujuan apa pun, tanpa syarat apa pun, termasuk tanpa kewajiban mencantumkan nama pembuatnya.
+
+Dipelihara oleh Eko Supriyono <esup0001@gmail.com>.

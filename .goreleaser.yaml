@@ -29,7 +29,7 @@ archives:
         formats: [zip]
     files:
       - README.md
-      - docs/PRD.md
+      - LICENSE
 
 checksum:
   name_template: checksums.txt
@@ -40,7 +40,8 @@ snapshot:
 nfpms:
   - package_name: d8s
     homepage: https://github.com/ekosup/d8s
-    maintainer: '{{ envOrDefault "D8S_MAINTAINER" "d8s maintainers <maintainers@d8s.invalid>" }}'
+    maintainer: Eko Supriyono <esup0001@gmail.com>
+    license: 0BSD
     description: Terminal UI for Docker Engine and Docker Swarm, in the manner of k9s.
     formats:
       - deb

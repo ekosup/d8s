@@ -303,7 +303,7 @@ Risiko terbesar adalah harapan pengguna k9s yang tidak bisa dipenuhi Swarm: shel
 ### Pertanyaan terbuka
 
 - [ ] Library TUI: tview (usulan dokumen ini) atau Bubble Tea?
-- [ ] Lisensi: Apache-2.0 seperti k9s, atau MIT?
+- [x] Lisensi: 0BSD, tanpa syarat apa pun (diputuskan 2026-10-06).
 - [ ] Siapa yang mengerjakan dan berapa kapasitasnya? Tanggal milestone menunggu jawaban ini.
 - [ ] Apakah deploy stack dari Compose file masuk 1.0, atau tetap pasca-1.0?
 - [ ] Podman: tidak didukung, atau best-effort lewat API kompatibelnya?
