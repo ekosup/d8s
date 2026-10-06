@@ -8,6 +8,9 @@ func Default(now func() time.Time) (*Registry, error) {
 	for _, res := range []Resource{
 		Containers(now),
 		Images(now),
+		Volumes(now),
+		Networks(now),
+		Compose(now),
 	} {
 		if err := reg.Register(res); err != nil {
 			return nil, err
