@@ -1,0 +1,35 @@
+# Sample stack for the development swarm: two services, a config and a
+# secret, so every Swarm view has something to show.
+services:
+  web:
+    image: ${WORKLOAD_IMAGE:-nginx:alpine}
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 2s
+        failure_action: pause
+        monitor: 5s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 2
+    ports:
+      - "8080:80"
+    configs:
+      - source: motd
+        target: /usr/share/nginx/html/motd.txt
+    secrets:
+      - token
+
+  api:
+    image: ${WORKLOAD_IMAGE:-nginx:alpine}
+    deploy:
+      replicas: 2
+
+configs:
+  motd:
+    file: ./motd.txt
+
+secrets:
+  token:
+    file: ./token.txt

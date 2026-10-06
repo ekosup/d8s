@@ -12,7 +12,7 @@ GOLANGCI_VER  := v2.14.0
 
 DEMO_IMAGE := nginx:alpine
 
-.PHONY: build test lint tools version tag demo-up demo-down clean
+.PHONY: build test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration clean
 
 build: ## build bin/d8s
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/d8s ./cmd/d8s
@@ -45,6 +45,15 @@ demo-up: ## create d8s-demo* containers, network and volume for manual checks
 
 demo-down: ## remove everything demo-up created
 	DEMO_IMAGE=$(DEMO_IMAGE) $(DEMO_COMPOSE) down --volumes
+
+swarm-up: ## three-node swarm in docker-in-docker, context d8s-swarm, sample stack
+	scripts/swarm.sh up
+
+swarm-down: ## remove the development swarm
+	scripts/swarm.sh down
+
+test-integration: ## tests against the development swarm (run swarm-up first)
+	DOCKER_CONTEXT=d8s-swarm go test -tags integration -count=1 ./internal/docker/...
 
 clean:
 	rm -rf bin/d8s dist
