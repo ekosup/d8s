@@ -11,6 +11,7 @@ func Default(now func() time.Time) (*Registry, error) {
 		Volumes(now),
 		Networks(now),
 		Compose(now),
+		DiskUsage(),
 	} {
 		if err := reg.Register(res); err != nil {
 			return nil, err
