@@ -27,18 +27,33 @@ func (a *App) actionBindings(res resource.Resource, view *tableView) []binding {
 	return out
 }
 
-// startAction runs act on the selected row, asking first when it must.
+// startAction runs act on the selected row, or on its fixed target for a
+// global action, asking first when it must.
 func (a *App) startAction(act resource.Action, view *tableView) {
-	row, ok := view.SelectedRow()
-	if !ok {
-		return
+	var rows []resource.Row
+	if act.Target != "" {
+		rows = []resource.Row{{Cells: []string{act.Target}}}
+	} else {
+		row, ok := view.SelectedRow()
+		if !ok {
+			return
+		}
+		rows = []resource.Row{row}
 	}
-	rows := []resource.Row{row}
 	if !act.Confirm {
 		a.runAction(act, rows)
 		return
 	}
-	a.confirm(fmt.Sprintf("%s %s?", act.Name, rowNames(rows)), func() { a.runAction(act, rows) })
+	question := fmt.Sprintf("%s %s?", act.Name, rowNames(rows))
+	if act.Warn != nil {
+		for _, r := range rows {
+			if w := act.Warn(r); w != "" {
+				question += "\n" + w
+				break
+			}
+		}
+	}
+	a.confirm(question, func() { a.runAction(act, rows) })
 }
 
 // runAction executes in the background so a slow daemon cannot freeze the
@@ -81,13 +96,18 @@ func (a *App) confirm(question string, yes func()) {
 	text.SetText(fmt.Sprintf("\n%s\n\n[steelblue]<y>[-] yes   [steelblue]<n>[-] no", tview.Escape(question)))
 	text.SetBorder(true).SetTitle(" Confirm ").SetBorderColor(toneColors[resource.ToneWarn])
 
-	width := min(max(len(question)+8, 40), 100)
+	lines := strings.Split(question, "\n")
+	width := 40
+	for _, l := range lines {
+		width = max(width, len(l)+8)
+	}
+	width = min(width, 100)
 	dialog := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().
 			AddItem(nil, 0, 1, false).
 			AddItem(text, width, 0, true).
-			AddItem(nil, 0, 1, false), 6, 0, true).
+			AddItem(nil, 0, 1, false), len(lines)+5, 0, true).
 		AddItem(nil, 0, 1, false)
 
 	a.Push(&page{

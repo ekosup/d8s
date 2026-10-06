@@ -33,6 +33,66 @@ type Container struct {
 	Status  string
 	Ports   []Port
 	Created time.Time
+
+	ImageID  string
+	Labels   map[string]string
+	Networks []Attachment // networks the container is attached to
+	Volumes  []string     // names of the volumes it mounts
+}
+
+// Attachment is a container's connection to one network.
+type Attachment struct {
+	Network   string
+	NetworkID string
+	IP        string
+}
+
+// Image is one image; it may carry several tags or none.
+type Image struct {
+	ID      string
+	Tags    []string // "repo:tag"; empty for a dangling image
+	Size    int64
+	Created time.Time
+}
+
+// ImageLayer is one step of an image's build history.
+type ImageLayer struct {
+	ID        string
+	CreatedBy string
+	Size      int64
+	Created   time.Time
+}
+
+// Volume is a named volume.
+type Volume struct {
+	Name       string
+	Driver     string
+	Mountpoint string
+	Created    time.Time
+}
+
+// Network is a Docker network.
+type Network struct {
+	ID      string
+	Name    string
+	Driver  string
+	Scope   string
+	Subnets []string
+}
+
+// DiskUsage summarises the space one kind of object takes.
+type DiskUsage struct {
+	Kind        Kind
+	Total       int64
+	Active      int64
+	Size        int64
+	Reclaimable int64
+}
+
+// PruneReport says what a prune removed.
+type PruneReport struct {
+	Count     int
+	Reclaimed uint64
 }
 
 // Event is a daemon event, reduced to what triggers a refresh.
@@ -62,10 +122,11 @@ type Kind string
 
 // Object kinds.
 const (
-	KindContainer Kind = "container"
-	KindImage     Kind = "image"
-	KindVolume    Kind = "volume"
-	KindNetwork   Kind = "network"
+	KindContainer  Kind = "container"
+	KindImage      Kind = "image"
+	KindVolume     Kind = "volume"
+	KindNetwork    Kind = "network"
+	KindBuildCache Kind = "build cache"
 )
 
 // LogOptions selects which log lines to read.
@@ -102,6 +163,17 @@ type Client interface {
 	ContainerLogs(ctx context.Context, id string, opts LogOptions) (io.ReadCloser, error)
 	// Exec starts an interactive command in a running container.
 	Exec(ctx context.Context, id string, opts ExecOptions) (ExecSession, error)
+	Images(ctx context.Context) ([]Image, error)
+	ImageHistory(ctx context.Context, id string) ([]ImageLayer, error)
+	Volumes(ctx context.Context) ([]Volume, error)
+	Networks(ctx context.Context) ([]Network, error)
+	// Remove deletes one image, volume or network. It is not forced: an
+	// object still in use is refused by the daemon.
+	Remove(ctx context.Context, kind Kind, id string) error
+	// Prune deletes what is unused: dangling images, stopped containers,
+	// unused anonymous volumes, or the build cache.
+	Prune(ctx context.Context, kind Kind) (PruneReport, error)
+	DiskUsage(ctx context.Context) ([]DiskUsage, error)
 	// Inspect returns the daemon's full description of an object as JSON.
 	Inspect(ctx context.Context, kind Kind, id string) ([]byte, error)
 	// Events streams daemon events until ctx is cancelled. An error on the

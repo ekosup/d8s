@@ -40,8 +40,15 @@ type Row struct {
 	Attrs map[string]string
 }
 
-// Name is what the row is called in messages: its first cell.
+// attrName, when present in Attrs, overrides the row's display name.
+const attrName = "name"
+
+// Name is what the row is called in messages: its name attribute if it has
+// one, otherwise its first cell.
 func (r Row) Name() string {
+	if n := r.Attrs[attrName]; n != "" {
+		return n
+	}
 	if len(r.Cells) > 0 && r.Cells[0] != "" {
 		return r.Cells[0]
 	}
@@ -60,6 +67,20 @@ type Action struct {
 	// Mutates marks actions that change state, which read-only mode refuses.
 	Mutates bool
 	Run     func(ctx context.Context, c docker.Client, row Row) error
+	// Warn, when set, returns a caution to show in the confirmation for
+	// this particular row, or "" when there is nothing to warn about.
+	Warn func(row Row) string
+	// Target makes the action global: it applies to Target (for example
+	// "dangling images") instead of the selected row, and Run gets an
+	// empty Row.
+	Target string
+}
+
+// TextPage is a read-only text view about one row, opened with a key.
+type TextPage struct {
+	Key   string
+	Name  string // "History"
+	Fetch func(ctx context.Context, c docker.Client, row Row) ([]string, error)
 }
 
 // Resource is the declarative definition of one kind of object.
@@ -78,6 +99,10 @@ type Resource struct {
 	Inspect func(ctx context.Context, c docker.Client, row Row) ([]byte, error)
 	// Logs opens the row's log stream as plain text. Nil means it has none.
 	Logs func(ctx context.Context, c docker.Client, row Row, opts docker.LogOptions) (io.ReadCloser, error)
+	// Open returns the view Enter drills down into for a row.
+	Open func(row Row) (Resource, bool)
+	// Pages are extra text views about a row.
+	Pages []TextPage
 	// Exec starts an interactive command in the row's container. Nil means
 	// the resource has no shell.
 	Exec func(ctx context.Context, c docker.Client, row Row, opts docker.ExecOptions) (docker.ExecSession, error)

@@ -46,6 +46,9 @@ type page struct {
 	filter filterer
 	// onClose runs when the page leaves the stack, to stop what feeds it.
 	onClose func()
+	// pause and resume run when another page covers this one and when it
+	// is uncovered again, so only the visible view is kept fresh.
+	pause, resume func()
 	// hints are the bindings worth advertising in the header.
 	hints func() []binding
 	// modal pages take every key: nothing reaches the pages below or the
@@ -190,6 +193,9 @@ func (a *App) Run() error {
 func (a *App) Push(p *page) {
 	a.nextPageID++
 	p.id = fmt.Sprintf("page-%d", a.nextPageID)
+	if cur := a.top(); cur != nil && cur.pause != nil && !p.modal {
+		cur.pause()
+	}
 	a.stack = append(a.stack, p)
 	a.pages.AddPage(p.id, p.prim, true, true)
 	a.tv.SetFocus(p.prim)
@@ -208,6 +214,9 @@ func (a *App) Pop() bool {
 	a.stack = a.stack[:last]
 	if closing.onClose != nil {
 		closing.onClose()
+	}
+	if top := a.stack[last-1]; top.resume != nil && !closing.modal {
+		top.resume()
 	}
 	a.tv.SetFocus(a.stack[last-1].prim)
 	a.drawCrumbs()

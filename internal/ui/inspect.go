@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"gopkg.in/yaml.v3"
 
 	"github.com/ekosup/d8s/internal/resource"
@@ -20,6 +21,15 @@ const fetchTimeout = 15 * time.Second
 // do beyond listing: inspect now, logs and shell as they are added.
 func (a *App) capabilityBindings(res resource.Resource, view *tableView) []binding {
 	var out []binding
+	if res.Open != nil {
+		out = append(out, keyBinding(tcell.KeyEnter, "enter", "Open", func() {
+			if row, ok := view.SelectedRow(); ok {
+				if child, ok := res.Open(row); ok {
+					a.PushResource(child)
+				}
+			}
+		}))
+	}
 	if res.Inspect != nil {
 		out = append(out,
 			runeBinding('d', "d", "Inspect", func() { a.openInspect(res, view, false) }),
@@ -32,7 +42,38 @@ func (a *App) capabilityBindings(res resource.Resource, view *tableView) []bindi
 	if res.Exec != nil {
 		out = append(out, runeBinding('s', "s", "Shell", func() { a.openShell(res, view) }))
 	}
+	for _, tp := range res.Pages {
+		b, ok := parseKey(tp.Key)
+		if !ok {
+			continue
+		}
+		b.desc = tp.Name
+		b.do = func() { a.openTextPage(tp, view) }
+		out = append(out, b)
+	}
 	return out
+}
+
+// openTextPage fetches and shows one of a resource's extra text views.
+func (a *App) openTextPage(tp resource.TextPage, view *tableView) {
+	row, ok := view.SelectedRow()
+	if !ok || a.client == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+		defer cancel()
+		lines, err := tp.Fetch(ctx, a.client, row)
+		a.queue(func() {
+			if err != nil {
+				a.Flash(flashError, strings.ToLower(tp.Name)+" "+row.Name()+": "+oneLine(err.Error()))
+				return
+			}
+			p := newPager(tp.Name+": "+row.Name(), 0)
+			p.SetLines(lines)
+			a.pushPager(strings.ToLower(tp.Name), p, nil)
+		})
+	}()
 }
 
 // openInspect fetches the selected object's description and shows it as

@@ -26,8 +26,11 @@ type harness struct {
 
 func newHarness(t *testing.T, opts store.Options, cs ...docker.Container) *harness {
 	t.Helper()
-	reg, err := resource.Default(func() time.Time { return time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC) })
-	if err != nil {
+	// Only the container resource is registered by default, so tests can
+	// add stand-ins under any other name; use register for more.
+	clock := func() time.Time { return time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC) }
+	reg := resource.NewRegistry()
+	if err := reg.Register(resource.Containers(clock)); err != nil {
 		t.Fatal(err)
 	}
 	h := &harness{t: t, fake: dockertest.NewFake(dockertest.WithContainers(cs...)), queue: make(chan func(), 256)}
@@ -35,6 +38,16 @@ func newHarness(t *testing.T, opts store.Options, cs ...docker.Container) *harne
 	h.app.queue = func(f func()) { h.queue <- f }
 	t.Cleanup(h.app.stopWatch)
 	return h
+}
+
+// register adds resources to the harness's registry.
+func (h *harness) register(rs ...resource.Resource) {
+	h.t.Helper()
+	for _, r := range rs {
+		if err := h.app.registry.Register(r); err != nil {
+			h.t.Fatal(err)
+		}
+	}
 }
 
 // step runs the next queued UI update, failing if none arrives.

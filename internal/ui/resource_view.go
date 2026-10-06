@@ -11,22 +11,56 @@ import (
 // was shown before is closed and its watcher stopped.
 func (a *App) ShowResource(res resource.Resource) {
 	a.stopWatch()
-	a.gen++
-	gen := a.gen
+	p := a.resourcePage(res)
+	a.resetStack(p)
+	p.resume()
+}
+
+// PushResource opens res on top of the current page, as a drill-down.
+func (a *App) PushResource(res resource.Resource) {
+	p := a.resourcePage(res)
+	a.Push(p)
+	p.resume()
+}
+
+// resourcePage builds the table page for res. Its watcher runs only while
+// the page is the visible one: resume starts it, pause and close stop it.
+func (a *App) resourcePage(res resource.Resource) *page {
 	view := newTableView(res.Title, res.Columns)
-	a.view = view
-	a.stale = false
+	var cancel context.CancelFunc
+	stop := func() {
+		if cancel != nil {
+			cancel()
+			cancel = nil
+		}
+	}
+	start := func() {
+		stop()
+		a.gen++
+		gen := a.gen
+		a.view = view
+		a.stale = false
+		var ctx context.Context
+		ctx, cancel = context.WithCancel(context.Background())
+		a.cancelWatch = cancel
+		a.watchDone = store.Watch(ctx, a.client, res, a.watchOpts, func(s store.Snapshot) {
+			a.queue(func() { a.applySnapshot(gen, view, s) })
+		})
+	}
 
 	actions := append(a.capabilityBindings(res, view), a.actionBindings(res, view)...)
-	a.resetStack(&page{
+	return &page{
 		name: res.Name,
 		prim: view,
 		bindings: func() []binding {
 			return append(append([]binding(nil), actions...), view.bindings()...)
 		},
-		hints:  func() []binding { return actions },
-		table:  view,
-		filter: view,
+		hints:   func() []binding { return actions },
+		table:   view,
+		filter:  view,
+		pause:   stop,
+		resume:  start,
+		onClose: stop,
 		back: func() bool {
 			if view.Filter() == "" {
 				return false
@@ -34,13 +68,7 @@ func (a *App) ShowResource(res resource.Resource) {
 			view.SetFilter("")
 			return true
 		},
-	})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	a.cancelWatch = cancel
-	a.watchDone = store.Watch(ctx, a.client, res, a.watchOpts, func(s store.Snapshot) {
-		a.queue(func() { a.applySnapshot(gen, view, s) })
-	})
+	}
 }
 
 // applySnapshot draws one refresh result. It runs on the UI goroutine.

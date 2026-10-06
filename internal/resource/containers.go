@@ -13,10 +13,17 @@ import (
 
 // Containers is the container list. now is injected so ages are testable.
 func Containers(now func() time.Time) Resource {
+	res := containersWhere(now, "Containers", nil)
+	res.Aliases = []string{"c", "container", "ps"}
+	return res
+}
+
+// containersWhere is the container list narrowed to those keep accepts. It
+// is what other resources drill down into.
+func containersWhere(now func() time.Time, title string, keep func(docker.Container) bool) Resource {
 	return Resource{
-		Name:    "containers",
-		Aliases: []string{"c", "container", "ps"},
-		Title:   "Containers",
+		Name:  "containers",
+		Title: title,
 		Columns: []Column{
 			{Name: "NAME"}, {Name: "IMAGE"}, {Name: "STATE"}, {Name: "STATUS"}, {Name: "PORTS"}, {Name: "AGE"},
 		},
@@ -28,6 +35,9 @@ func Containers(now func() time.Time) Resource {
 			}
 			rows := make([]Row, 0, len(cs))
 			for _, x := range cs {
+				if keep != nil && !keep(x) {
+					continue
+				}
 				age := now().Sub(x.Created)
 				rows = append(rows, Row{
 					ID:       x.ID,

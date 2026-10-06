@@ -30,6 +30,14 @@ type Fake struct {
 	logOpts    docker.LogOptions
 	logStreams map[*logStream]struct{}
 
+	images   []docker.Image
+	history  map[string][]docker.ImageLayer
+	volumes  []docker.Volume
+	networks []docker.Network
+	usage    []docker.DiskUsage
+	prune    docker.PruneReport
+	log      []string
+
 	execs    []*FakeExec
 	execErr  error
 	execCode int
@@ -357,6 +365,160 @@ func (f *Fake) SetExecExitCode(code int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.execCode = code
+}
+
+// Images implements docker.Client.
+func (f *Fake) Images(context.Context) ([]docker.Image, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listCalls++
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return append([]docker.Image(nil), f.images...), nil
+}
+
+// ImageHistory implements docker.Client.
+func (f *Fake) ImageHistory(_ context.Context, id string) ([]docker.ImageLayer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.history[id], nil
+}
+
+// Volumes implements docker.Client.
+func (f *Fake) Volumes(context.Context) ([]docker.Volume, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listCalls++
+	return append([]docker.Volume(nil), f.volumes...), f.listErr
+}
+
+// Networks implements docker.Client.
+func (f *Fake) Networks(context.Context) ([]docker.Network, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listCalls++
+	return append([]docker.Network(nil), f.networks...), f.listErr
+}
+
+// Remove implements docker.Client: the object disappears from its list.
+func (f *Fake) Remove(_ context.Context, kind docker.Kind, id string) error {
+	f.mu.Lock()
+	if f.actionErr != nil {
+		err := f.actionErr
+		f.mu.Unlock()
+		return err
+	}
+	f.log = append(f.log, "remove "+string(kind)+" "+id)
+	switch kind {
+	case docker.KindImage:
+		kept := f.images[:0:0]
+		for _, im := range f.images {
+			// Removing by tag untags; the image goes when no tag is left.
+			tags := im.Tags[:0:0]
+			for _, t := range im.Tags {
+				if t != id {
+					tags = append(tags, t)
+				}
+			}
+			if im.ID == id || (len(im.Tags) > 0 && len(tags) == 0) {
+				continue
+			}
+			im.Tags = tags
+			kept = append(kept, im)
+		}
+		f.images = kept
+	case docker.KindVolume:
+		kept := f.volumes[:0:0]
+		for _, v := range f.volumes {
+			if v.Name != id {
+				kept = append(kept, v)
+			}
+		}
+		f.volumes = kept
+	case docker.KindNetwork:
+		kept := f.networks[:0:0]
+		for _, n := range f.networks {
+			if n.ID != id {
+				kept = append(kept, n)
+			}
+		}
+		f.networks = kept
+	}
+	f.mu.Unlock()
+	f.Emit(docker.Event{Type: string(kind), Action: "remove", ID: id})
+	return nil
+}
+
+// Prune implements docker.Client; it reports what SetPruneReport configured.
+func (f *Fake) Prune(_ context.Context, kind docker.Kind) (docker.PruneReport, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.actionErr != nil {
+		return docker.PruneReport{}, f.actionErr
+	}
+	f.log = append(f.log, "prune "+string(kind))
+	return f.prune, nil
+}
+
+// DiskUsage implements docker.Client.
+func (f *Fake) DiskUsage(context.Context) ([]docker.DiskUsage, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listCalls++
+	return append([]docker.DiskUsage(nil), f.usage...), f.listErr
+}
+
+// SetImages replaces the image list.
+func (f *Fake) SetImages(ims ...docker.Image) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.images = ims
+}
+
+// SetImageHistory sets the layers of one image.
+func (f *Fake) SetImageHistory(id string, layers ...docker.ImageLayer) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.history == nil {
+		f.history = map[string][]docker.ImageLayer{}
+	}
+	f.history[id] = layers
+}
+
+// SetVolumes replaces the volume list.
+func (f *Fake) SetVolumes(vs ...docker.Volume) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.volumes = vs
+}
+
+// SetNetworks replaces the network list.
+func (f *Fake) SetNetworks(ns ...docker.Network) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.networks = ns
+}
+
+// SetDiskUsage sets what DiskUsage returns.
+func (f *Fake) SetDiskUsage(us ...docker.DiskUsage) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.usage = us
+}
+
+// SetPruneReport sets what Prune returns.
+func (f *Fake) SetPruneReport(r docker.PruneReport) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prune = r
+}
+
+// Log returns the remove and prune requests made so far, e.g. "remove image nginx:1".
+func (f *Fake) Log() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.log...)
 }
 
 // Inspect implements docker.Client.

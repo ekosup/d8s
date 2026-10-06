@@ -7,6 +7,7 @@ func Default(now func() time.Time) (*Registry, error) {
 	reg := NewRegistry()
 	for _, res := range []Resource{
 		Containers(now),
+		Images(now),
 	} {
 		if err := reg.Register(res); err != nil {
 			return nil, err

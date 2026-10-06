@@ -72,15 +72,155 @@ func toContainer(s container.Summary) Container {
 		}
 		ports = append(ports, Port{IP: ip, Public: p.PublicPort, Private: p.PrivatePort, Proto: p.Type})
 	}
-	return Container{
-		ID:      s.ID,
-		Name:    name,
-		Image:   s.Image,
-		State:   string(s.State),
-		Status:  s.Status,
-		Ports:   ports,
-		Created: time.Unix(s.Created, 0),
+	var endpoints []Attachment
+	if s.NetworkSettings != nil {
+		for netName, ep := range s.NetworkSettings.Networks {
+			if ep == nil {
+				continue
+			}
+			ip := ""
+			if ep.IPAddress.IsValid() {
+				ip = ep.IPAddress.String()
+			}
+			endpoints = append(endpoints, Attachment{Network: netName, NetworkID: ep.NetworkID, IP: ip})
+		}
 	}
+	var volumes []string
+	for _, m := range s.Mounts {
+		if m.Type == "volume" && m.Name != "" {
+			volumes = append(volumes, m.Name)
+		}
+	}
+	return Container{
+		ID:       s.ID,
+		Name:     name,
+		Image:    s.Image,
+		State:    string(s.State),
+		Status:   s.Status,
+		Ports:    ports,
+		Created:  time.Unix(s.Created, 0),
+		ImageID:  s.ImageID,
+		Labels:   s.Labels,
+		Networks: endpoints,
+		Volumes:  volumes,
+	}
+}
+
+func (c *sdkClient) Images(ctx context.Context) ([]Image, error) {
+	res, err := c.cli.ImageList(ctx, client.ImageListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list images: %w", err)
+	}
+	out := make([]Image, 0, len(res.Items))
+	for _, s := range res.Items {
+		out = append(out, Image{ID: s.ID, Tags: s.RepoTags, Size: s.Size, Created: time.Unix(s.Created, 0)})
+	}
+	return out, nil
+}
+
+func (c *sdkClient) ImageHistory(ctx context.Context, id string) ([]ImageLayer, error) {
+	res, err := c.cli.ImageHistory(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("image history: %w", err)
+	}
+	out := make([]ImageLayer, 0, len(res.Items))
+	for _, h := range res.Items {
+		out = append(out, ImageLayer{ID: h.ID, CreatedBy: h.CreatedBy, Size: h.Size, Created: time.Unix(h.Created, 0)})
+	}
+	return out, nil
+}
+
+func (c *sdkClient) Volumes(ctx context.Context) ([]Volume, error) {
+	res, err := c.cli.VolumeList(ctx, client.VolumeListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list volumes: %w", err)
+	}
+	out := make([]Volume, 0, len(res.Items))
+	for _, v := range res.Items {
+		created, _ := time.Parse(time.RFC3339, v.CreatedAt)
+		out = append(out, Volume{Name: v.Name, Driver: v.Driver, Mountpoint: v.Mountpoint, Created: created})
+	}
+	return out, nil
+}
+
+func (c *sdkClient) Networks(ctx context.Context) ([]Network, error) {
+	res, err := c.cli.NetworkList(ctx, client.NetworkListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list networks: %w", err)
+	}
+	out := make([]Network, 0, len(res.Items))
+	for _, n := range res.Items {
+		var subnets []string
+		for _, cfg := range n.IPAM.Config {
+			if cfg.Subnet.IsValid() {
+				subnets = append(subnets, cfg.Subnet.String())
+			}
+		}
+		out = append(out, Network{ID: n.ID, Name: n.Name, Driver: n.Driver, Scope: n.Scope, Subnets: subnets})
+	}
+	return out, nil
+}
+
+func (c *sdkClient) Remove(ctx context.Context, kind Kind, id string) error {
+	var err error
+	switch kind {
+	case KindImage:
+		_, err = c.cli.ImageRemove(ctx, id, client.ImageRemoveOptions{PruneChildren: true})
+	case KindVolume:
+		_, err = c.cli.VolumeRemove(ctx, id, client.VolumeRemoveOptions{})
+	case KindNetwork:
+		_, err = c.cli.NetworkRemove(ctx, id, client.NetworkRemoveOptions{})
+	default:
+		return fmt.Errorf("cannot remove %q", kind)
+	}
+	if err != nil {
+		return fmt.Errorf("remove %s: %w", kind, err)
+	}
+	return nil
+}
+
+func (c *sdkClient) Prune(ctx context.Context, kind Kind) (PruneReport, error) {
+	var (
+		rep PruneReport
+		err error
+	)
+	switch kind {
+	case KindImage:
+		var res client.ImagePruneResult
+		res, err = c.cli.ImagePrune(ctx, client.ImagePruneOptions{Filters: make(client.Filters).Add("dangling", "true")})
+		rep = PruneReport{Count: len(res.Report.ImagesDeleted), Reclaimed: res.Report.SpaceReclaimed}
+	case KindContainer:
+		var res client.ContainerPruneResult
+		res, err = c.cli.ContainerPrune(ctx, client.ContainerPruneOptions{})
+		rep = PruneReport{Count: len(res.Report.ContainersDeleted), Reclaimed: res.Report.SpaceReclaimed}
+	case KindVolume:
+		var res client.VolumePruneResult
+		res, err = c.cli.VolumePrune(ctx, client.VolumePruneOptions{})
+		rep = PruneReport{Count: len(res.Report.VolumesDeleted), Reclaimed: res.Report.SpaceReclaimed}
+	case KindBuildCache:
+		var res client.BuildCachePruneResult
+		res, err = c.cli.BuildCachePrune(ctx, client.BuildCachePruneOptions{})
+		rep = PruneReport{Count: len(res.Report.CachesDeleted), Reclaimed: res.Report.SpaceReclaimed}
+	default:
+		return PruneReport{}, fmt.Errorf("cannot prune %q", kind)
+	}
+	if err != nil {
+		return PruneReport{}, fmt.Errorf("prune %s: %w", kind, err)
+	}
+	return rep, nil
+}
+
+func (c *sdkClient) DiskUsage(ctx context.Context) ([]DiskUsage, error) {
+	res, err := c.cli.DiskUsage(ctx, client.DiskUsageOptions{Containers: true, Images: true, BuildCache: true, Volumes: true})
+	if err != nil {
+		return nil, fmt.Errorf("disk usage: %w", err)
+	}
+	return []DiskUsage{
+		{Kind: KindImage, Total: res.Images.TotalCount, Active: res.Images.ActiveCount, Size: res.Images.TotalSize, Reclaimable: res.Images.Reclaimable},
+		{Kind: KindContainer, Total: res.Containers.TotalCount, Active: res.Containers.ActiveCount, Size: res.Containers.TotalSize, Reclaimable: res.Containers.Reclaimable},
+		{Kind: KindVolume, Total: res.Volumes.TotalCount, Active: res.Volumes.ActiveCount, Size: res.Volumes.TotalSize, Reclaimable: res.Volumes.Reclaimable},
+		{Kind: KindBuildCache, Total: res.BuildCache.TotalCount, Active: res.BuildCache.ActiveCount, Size: res.BuildCache.TotalSize, Reclaimable: res.BuildCache.Reclaimable},
+	}, nil
 }
 
 func (c *sdkClient) ContainerAction(ctx context.Context, id string, op ContainerOp) error {
