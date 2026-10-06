@@ -12,7 +12,7 @@ GOLANGCI_VER  := v2.14.0
 
 DEMO_IMAGE := nginx:alpine
 
-.PHONY: build test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration clean
+.PHONY: build test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration test-matrix bench release-snapshot clean
 
 build: ## build bin/d8s
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/d8s ./cmd/d8s
@@ -54,6 +54,9 @@ swarm-down: ## remove the development swarm
 
 test-integration: ## tests against the development swarm (run swarm-up first)
 	DOCKER_CONTEXT=d8s-swarm go test -tags integration -count=1 ./internal/docker/...
+
+bench: ## measure against the performance targets, with synthetic data
+	@set -o pipefail; go test -tags bench -count=1 -v -run TestPerformanceTargets ./internal/ui/ | grep -vE '^(=== RUN|--- PASS|PASS$$|ok )'
 
 clean:
 	rm -rf bin/d8s dist

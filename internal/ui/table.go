@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -29,6 +30,7 @@ type tableView struct {
 	onSort func(column string, desc bool)
 
 	natural  []int // width each column wants, from the last refresh
+	limits   []int // width each column is cut to; 0 = not cut
 	fitWidth int   // inner width the cells are currently fitted to; -1 = not fitted
 }
 
@@ -44,6 +46,7 @@ func newTableView(title string, cols []resource.Column) *tableView {
 		model: newTableModel(cols),
 		marks: map[string]bool{},
 	}
+	v.SetContent(tableContent{v: v})
 	v.SetBorder(true)
 	v.SetFixed(1, 0)
 	v.SetSelectable(true, false)
@@ -117,47 +120,14 @@ func (v *tableView) refresh() {
 	selected := v.SelectedID()
 	prevRow, _ := v.GetSelection()
 	rows := v.model.Visible()
-	sortCol, sortDesc := v.model.Sort()
 
-	v.Clear()
-	for c, col := range v.model.cols {
-		name := col.Name
-		if c == sortCol {
-			if sortDesc {
-				name += "↓"
-			} else {
-				name += "↑"
-			}
-		}
-		cell := tview.NewTableCell(name).
-			SetSelectable(false).
-			SetExpansion(1).
-			SetTextColor(theme.header.color).
-			SetAttributes(theme.header.attrs)
-		if col.Right {
-			cell.SetAlign(tview.AlignRight)
-		}
-		v.SetCell(0, c, cell)
-	}
 	target := 0
-	for i, r := range rows {
-		style := theme.tones[r.Tone]
-		if v.marks[r.ID] {
-			style = theme.mark
-		}
-		for c, col := range v.model.cols {
-			text := ""
-			if c < len(r.Cells) {
-				text = r.Cells[c]
+	if selected != "" {
+		for i, r := range rows {
+			if r.ID == selected {
+				target = i + 1
+				break
 			}
-			cell := tview.NewTableCell(text).SetExpansion(1).SetTextColor(style.color).SetAttributes(style.attrs)
-			if col.Right {
-				cell.SetAlign(tview.AlignRight)
-			}
-			v.SetCell(i+1, c, cell)
-		}
-		if r.ID == selected {
-			target = i + 1
 		}
 	}
 	v.shown = rows
@@ -175,6 +145,63 @@ func (v *tableView) refresh() {
 		v.Select(min(max(prevRow, 1), len(rows)), 0)
 	}
 	v.SetTitle(v.titleText())
+}
+
+// tableContent serves cells to the table on demand. Only the rows on
+// screen are ever turned into cells, so a refresh costs the same whether
+// the list has twenty rows or twenty thousand.
+type tableContent struct {
+	tview.TableContentReadOnly
+	v *tableView
+}
+
+func (c tableContent) GetRowCount() int    { return len(c.v.shown) + 1 }
+func (c tableContent) GetColumnCount() int { return len(c.v.model.cols) }
+
+func (c tableContent) GetCell(row, column int) *tview.TableCell {
+	v := c.v
+	if column < 0 || column >= len(v.model.cols) || row < 0 || row > len(v.shown) {
+		return nil
+	}
+	col := v.model.cols[column]
+	var cell *tview.TableCell
+	if row == 0 {
+		cell = tview.NewTableCell(v.headerText(column)).
+			SetSelectable(false).
+			SetTextColor(theme.header.color).
+			SetAttributes(theme.header.attrs)
+	} else {
+		r := v.shown[row-1]
+		style := theme.tones[r.Tone]
+		if v.marks[r.ID] {
+			style = theme.mark
+		}
+		text := ""
+		if column < len(r.Cells) {
+			text = r.Cells[column]
+		}
+		cell = tview.NewTableCell(text).SetTextColor(style.color).SetAttributes(style.attrs)
+	}
+	cell.SetExpansion(1)
+	if col.Right {
+		cell.SetAlign(tview.AlignRight)
+	}
+	if column < len(v.limits) {
+		cell.SetMaxWidth(v.limits[column])
+	}
+	return cell
+}
+
+// headerText is a column's name, with an arrow on the sorted one.
+func (v *tableView) headerText(column int) string {
+	name := v.model.cols[column].Name
+	if sortCol, desc := v.model.Sort(); column == sortCol {
+		if desc {
+			return name + "↓"
+		}
+		return name + "↑"
+	}
+	return name
 }
 
 func (v *tableView) titleText() string {
@@ -205,9 +232,16 @@ const minColumnWidth = 8
 // measure records the width every column needs to show its text in full.
 func (v *tableView) measure() {
 	v.natural = make([]int, len(v.model.cols))
-	for r := range v.GetRowCount() {
+	for c := range v.natural {
+		v.natural[c] = tview.TaggedStringWidth(v.headerText(c))
+	}
+	for _, r := range v.shown {
 		for c := range v.natural {
-			v.natural[c] = max(v.natural[c], tview.TaggedStringWidth(v.GetCell(r, c).Text))
+			if c < len(r.Cells) {
+				// Counting runes is exact for everything Docker reports
+				// and far cheaper than measuring display width per cell.
+				v.natural[c] = max(v.natural[c], utf8.RuneCountInString(r.Cells[c]))
+			}
 		}
 	}
 	v.fitWidth = -1
@@ -248,13 +282,10 @@ func (v *tableView) fit(width int) {
 		widths[widest]--
 		total--
 	}
+	v.limits = make([]int, len(widths))
 	for c, w := range widths {
-		limit := 0 // no limit
 		if w < v.natural[c] {
-			limit = w
-		}
-		for r := range v.GetRowCount() {
-			v.GetCell(r, c).SetMaxWidth(limit)
+			v.limits[c] = w // 0 means no limit
 		}
 	}
 }
