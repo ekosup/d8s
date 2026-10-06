@@ -57,7 +57,7 @@ func TestImageRows(t *testing.T) {
 	}
 	// SIZE sorts by bytes: 1.5KiB < 45MiB < 3GiB.
 	size := slices.IndexFunc(res.Columns, func(c Column) bool { return c.Name == "SIZE" })
-	if !(rows[2].SortKeys[size] < rows[0].SortKeys[size] && rows[0].SortKeys[size] < rows[3].SortKeys[size]) {
+	if a, b, c := rows[2].SortKeys[size], rows[0].SortKeys[size], rows[3].SortKeys[size]; a >= b || b >= c {
 		t.Fatal("size sort keys are not ordered by bytes")
 	}
 }
