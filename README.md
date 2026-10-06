@@ -242,7 +242,8 @@ make test-integration  # tests against that cluster
 make test-matrix       # the same against the oldest supported and the latest engine
 make bench             # measure against the performance targets
 make release-snapshot  # every release artefact into dist/, publishing nothing
-make release           # publish the tagged version to GitHub Releases (needs GITHUB_TOKEN)
+make release-status    # what is unreleased, and which release would come next
+make release-next PART=patch   # test, bump, tag, push and publish (token from .env)
 ```
 
 `make swarm-up` does not make your own daemon a Swarm member: the cluster lives in three containers. The product specification is in [docs/PRD.md](docs/PRD.md) and the work plan in [docs/BACKLOG.md](docs/BACKLOG.md); both are in Indonesian.

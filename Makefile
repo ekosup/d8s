@@ -14,7 +14,7 @@ GORELEASER_VER := v2.18.2
 
 DEMO_IMAGE := nginx:alpine
 
-.PHONY: build install test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration test-matrix bench release-snapshot release clean
+.PHONY: build install test lint tools version tag demo-up demo-down swarm-up swarm-down test-integration test-matrix bench release-snapshot release-status release-next clean
 
 build: ## build bin/d8s
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/d8s ./cmd/d8s
@@ -75,13 +75,12 @@ release-snapshot: ## build every release artefact into dist/, publishing nothing
 	@test -x $(GORELEASER) || { echo "goreleaser missing: run 'make tools'"; exit 1; }
 	D8S_VERSION=$(VERSION) $(GORELEASER) release --snapshot --clean --skip=publish
 
-release: ## publish v$(VERSION) to GitHub Releases; needs the tag on HEAD and GITHUB_TOKEN
-	@test -x $(GORELEASER) || { echo "goreleaser missing: run 'make tools'"; exit 1; }
-	@test -z "$$(git status --porcelain)" || { echo "working tree is dirty; commit first"; exit 1; }
-	@test "$$(git describe --tags --exact-match 2>/dev/null)" = "v$(VERSION)" || \
-		{ echo "HEAD is not tagged v$(VERSION); run 'make tag' and push the tag first"; exit 1; }
-	@test -n "$$GITHUB_TOKEN" || { echo "GITHUB_TOKEN is not set; it needs write access to the repository's contents"; exit 1; }
-	D8S_VERSION=$(VERSION) $(GORELEASER) release --clean
+release-status: ## what is unreleased, and which release would come next
+	@scripts/release.sh status
+
+release-next: ## test, bump, tag, push and publish; PART=patch|minor|major|current|X.Y.Z, DRY=1 to rehearse
+	@test -n "$(PART)" || { echo "say which: make release-next PART=patch|minor|major|current"; exit 1; }
+	@scripts/release.sh $(PART) $(if $(DRY),--dry-run)
 
 clean:
 	rm -rf bin/d8s dist

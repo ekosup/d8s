@@ -57,5 +57,19 @@ homebrew_casks:
       name: homebrew-tap
     skip_upload: true
 
+# Release notes come from the commit subjects since the previous tag.
 changelog:
-  disable: true
+  use: git
+  sort: asc
+  groups:
+    - title: Baru
+      regexp: '^.*?feat(\(.+\))?:.+$'
+      order: 0
+    - title: Perbaikan
+      regexp: '^.*?fix(\(.+\))?:.+$'
+      order: 1
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chores:'
+      - '^test:'
