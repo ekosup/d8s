@@ -74,8 +74,6 @@ func run(ctx context.Context, client docker.Client, res resource.Resource, opts 
 		}
 		onUpdate(Snapshot{Rows: rows, Err: err, At: time.Now(), Source: source})
 	}
-	refresh(SourceInitial)
-
 	poll := time.NewTicker(opts.Poll)
 	defer poll.Stop()
 
@@ -94,7 +92,10 @@ func run(ctx context.Context, client docker.Client, res resource.Resource, opts 
 			events, errs = client.Events(ctx)
 		}
 	}
+	// Subscribe before the first list: an event that lands in between would
+	// otherwise go unnoticed until the next poll.
 	subscribe()
+	refresh(SourceInitial)
 
 	for {
 		select {
