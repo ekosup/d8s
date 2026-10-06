@@ -145,3 +145,32 @@ func inspectAs(kind docker.Kind) func(context.Context, docker.Client, Row) ([]by
 		return c.Inspect(ctx, kind, row.ID)
 	}
 }
+
+// withColumn returns a container resource with one more column at index at,
+// filled by value. Drill-downs use it to show what ties each container to
+// the parent, such as its address on a network.
+func withColumn(res Resource, at int, col Column, value func(docker.Container) string) Resource {
+	res.Columns = slices.Insert(slices.Clone(res.Columns), at, col)
+
+	list := res.List
+	res.List = func(ctx context.Context, c docker.Client) ([]Row, error) {
+		rows, err := list(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		cs, err := c.Containers(ctx)
+		if err != nil {
+			return nil, err
+		}
+		byID := make(map[string]docker.Container, len(cs))
+		for _, x := range cs {
+			byID[x.ID] = x
+		}
+		for i, r := range rows {
+			rows[i].Cells = slices.Insert(slices.Clone(r.Cells), at, value(byID[r.ID]))
+			rows[i].SortKeys = slices.Insert(slices.Clone(r.SortKeys), at, "")
+		}
+		return rows, nil
+	}
+	return res
+}
