@@ -33,10 +33,39 @@ func Containers(now func() time.Time) Resource {
 					Cells:    []string{x.Name, x.Image, x.State, x.Status, formatPorts(x.Ports), humanAge(age)},
 					SortKeys: []string{"", "", "", "", "", fmt.Sprintf("%020d", max(int64(age/time.Second), 0))},
 					Tone:     containerTone(x),
+					Attrs:    map[string]string{attrState: x.State},
 				})
 			}
 			return rows, nil
 		},
+		Actions: containerActions(),
+	}
+}
+
+const attrState = "state"
+
+func containerActions() []Action {
+	op := func(key, name string, confirm bool, pick func(Row) docker.ContainerOp) Action {
+		return Action{Key: key, Name: name, Confirm: confirm, Mutates: true,
+			Run: func(ctx context.Context, c docker.Client, row Row) error {
+				return c.ContainerAction(ctx, row.ID, pick(row))
+			}}
+	}
+	always := func(o docker.ContainerOp) func(Row) docker.ContainerOp {
+		return func(Row) docker.ContainerOp { return o }
+	}
+	return []Action{
+		op("a", "Start", false, always(docker.OpStart)),
+		op("x", "Stop", false, always(docker.OpStop)),
+		op("r", "Restart", false, always(docker.OpRestart)),
+		op("p", "Pause/resume", false, func(row Row) docker.ContainerOp {
+			if row.Attrs[attrState] == "paused" {
+				return docker.OpUnpause
+			}
+			return docker.OpPause
+		}),
+		op("ctrl-k", "Kill", true, always(docker.OpKill)),
+		op("ctrl-d", "Delete", true, always(docker.OpRemove)),
 	}
 }
 

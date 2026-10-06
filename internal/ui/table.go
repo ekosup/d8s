@@ -84,13 +84,15 @@ func (v *tableView) SelectedID() string {
 func (v *tableView) bindings() []binding {
 	out := make([]binding, 0, len(v.sortKeys))
 	for _, k := range v.sortKeys {
-		out = append(out, runeBinding(k.r,
+		b := runeBinding(k.r,
 			"shift-"+strings.ToLower(string(k.r)),
 			"Sort by "+v.model.cols[k.col].Name,
 			func() {
 				v.model.SortBy(k.col)
 				v.refresh()
-			}))
+			})
+		b.group = groupSort
+		out = append(out, b)
 	}
 	return out
 }
@@ -224,4 +226,13 @@ func (v *tableView) fit(width int) {
 			v.GetCell(r, c).SetMaxWidth(limit)
 		}
 	}
+}
+
+// SelectedRow returns the highlighted row.
+func (v *tableView) SelectedRow() (resource.Row, bool) {
+	row, _ := v.GetSelection()
+	if i := row - 1; i >= 0 && i < len(v.shown) {
+		return v.shown[i], true
+	}
+	return resource.Row{}, false
 }

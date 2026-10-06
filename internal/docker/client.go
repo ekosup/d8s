@@ -42,10 +42,25 @@ type Event struct {
 	Time   time.Time
 }
 
+// ContainerOp is a state change applied to one container.
+type ContainerOp string
+
+// Container operations.
+const (
+	OpStart   ContainerOp = "start"
+	OpStop    ContainerOp = "stop"
+	OpRestart ContainerOp = "restart"
+	OpPause   ContainerOp = "pause"
+	OpUnpause ContainerOp = "unpause"
+	OpKill    ContainerOp = "kill"
+	OpRemove  ContainerOp = "remove" // forced: also removes a running container
+)
+
 // Client is everything d8s needs from a Docker daemon.
 type Client interface {
 	Info(ctx context.Context) (Info, error)
 	Containers(ctx context.Context) ([]Container, error)
+	ContainerAction(ctx context.Context, id string, op ContainerOp) error
 	// Events streams daemon events until ctx is cancelled. An error on the
 	// second channel ends the stream; the caller subscribes again.
 	Events(ctx context.Context) (<-chan Event, <-chan error)

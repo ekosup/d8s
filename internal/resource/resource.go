@@ -35,6 +35,30 @@ type Row struct {
 	// behind a human-readable age). Empty entries fall back to the cell.
 	SortKeys []string
 	Tone     Tone
+	// Attrs carries facts actions and drill-downs need but no column shows.
+	Attrs map[string]string
+}
+
+// Name is what the row is called in messages: its first cell.
+func (r Row) Name() string {
+	if len(r.Cells) > 0 && r.Cells[0] != "" {
+		return r.Cells[0]
+	}
+	return r.ID
+}
+
+// Action is something the user can do to a row.
+type Action struct {
+	// Key is the key that triggers it: a single character such as "r", or
+	// "ctrl-" plus a letter such as "ctrl-d".
+	Key  string
+	Name string // imperative, shown in hints and messages: "Restart"
+	// Confirm asks before running; set it for anything that destroys data
+	// or interrupts a workload abruptly.
+	Confirm bool
+	// Mutates marks actions that change state, which read-only mode refuses.
+	Mutates bool
+	Run     func(ctx context.Context, c docker.Client, row Row) error
 }
 
 // Resource is the declarative definition of one kind of object.
@@ -47,4 +71,5 @@ type Resource struct {
 	// Empty means the resource can only be polled.
 	EventTypes []string
 	List       func(ctx context.Context, c docker.Client) ([]Row, error)
+	Actions    []Action
 }

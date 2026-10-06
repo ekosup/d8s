@@ -17,6 +17,14 @@ type Fake struct {
 	listCalls  int
 	eventCalls int
 	subs       []subscription
+	calls      []Call
+	actionErr  error
+}
+
+// Call records one mutating request made through the fake.
+type Call struct {
+	Op docker.ContainerOp
+	ID string
 }
 
 type subscription struct {
@@ -65,6 +73,56 @@ func (f *Fake) Containers(context.Context) ([]docker.Container, error) {
 		return nil, f.listErr
 	}
 	return append([]docker.Container(nil), f.containers...), nil
+}
+
+// ContainerAction implements docker.Client. It records the call, applies
+// the state change a daemon would, and emits the matching event.
+func (f *Fake) ContainerAction(_ context.Context, id string, op docker.ContainerOp) error {
+	f.mu.Lock()
+	if f.actionErr != nil {
+		err := f.actionErr
+		f.mu.Unlock()
+		return err
+	}
+	f.calls = append(f.calls, Call{Op: op, ID: id})
+	kept := f.containers[:0:0]
+	for _, c := range f.containers {
+		if c.ID != id {
+			kept = append(kept, c)
+			continue
+		}
+		switch op {
+		case docker.OpStart, docker.OpRestart, docker.OpUnpause:
+			c.State, c.Status = "running", "Up 1 second"
+		case docker.OpStop:
+			c.State, c.Status = "exited", "Exited (0) 1 second ago"
+		case docker.OpKill:
+			c.State, c.Status = "exited", "Exited (137) 1 second ago"
+		case docker.OpPause:
+			c.State, c.Status = "paused", "Up 1 second (Paused)"
+		case docker.OpRemove:
+			continue
+		}
+		kept = append(kept, c)
+	}
+	f.containers = kept
+	f.mu.Unlock()
+	f.Emit(docker.Event{Type: "container", Action: string(op), ID: id})
+	return nil
+}
+
+// Calls returns the mutating requests made so far.
+func (f *Fake) Calls() []Call {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]Call(nil), f.calls...)
+}
+
+// SetActionError makes every mutating request fail with err; nil restores it.
+func (f *Fake) SetActionError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.actionErr = err
 }
 
 // Events implements docker.Client. Every call is a new subscription.

@@ -18,8 +18,8 @@ var tableNavigation = []helpEntry{
 	{"k / ↑", "Up"},
 	{"g", "First row"},
 	{"shift-g", "Last row"},
-	{"ctrl-f / pgdn", "Page down"},
-	{"ctrl-b / pgup", "Page up"},
+	{"ctrl-f", "Page down"},
+	{"ctrl-b", "Page up"},
 }
 
 // showHelp opens the help screen for the page it is called from. Its
@@ -36,7 +36,23 @@ func (a *App) showHelp() {
 		}
 	}
 	if top.bindings != nil {
-		add(strings.ToUpper(top.name), entriesOf(top.bindings()))
+		// One column per group, in order of first appearance; the page's
+		// own (ungrouped) bindings come under its name.
+		var order []string
+		groups := map[string][]binding{}
+		for _, b := range top.bindings() {
+			g := b.group
+			if g == "" {
+				g = strings.ToUpper(top.name)
+			}
+			if _, seen := groups[g]; !seen {
+				order = append(order, g)
+			}
+			groups[g] = append(groups[g], b)
+		}
+		for _, g := range order {
+			add(g, entriesOf(groups[g]))
+		}
 	}
 	if top.table != nil {
 		add("NAVIGATION", tableNavigation)

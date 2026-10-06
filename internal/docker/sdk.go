@@ -79,6 +79,32 @@ func toContainer(s container.Summary) Container {
 	}
 }
 
+func (c *sdkClient) ContainerAction(ctx context.Context, id string, op ContainerOp) error {
+	var err error
+	switch op {
+	case OpStart:
+		_, err = c.cli.ContainerStart(ctx, id, client.ContainerStartOptions{})
+	case OpStop:
+		_, err = c.cli.ContainerStop(ctx, id, client.ContainerStopOptions{})
+	case OpRestart:
+		_, err = c.cli.ContainerRestart(ctx, id, client.ContainerRestartOptions{})
+	case OpPause:
+		_, err = c.cli.ContainerPause(ctx, id, client.ContainerPauseOptions{})
+	case OpUnpause:
+		_, err = c.cli.ContainerUnpause(ctx, id, client.ContainerUnpauseOptions{})
+	case OpKill:
+		_, err = c.cli.ContainerKill(ctx, id, client.ContainerKillOptions{})
+	case OpRemove:
+		_, err = c.cli.ContainerRemove(ctx, id, client.ContainerRemoveOptions{Force: true})
+	default:
+		return fmt.Errorf("unknown container operation %q", op)
+	}
+	if err != nil {
+		return fmt.Errorf("%s container: %w", op, err)
+	}
+	return nil
+}
+
 func (c *sdkClient) Events(ctx context.Context) (<-chan Event, <-chan error) {
 	res := c.cli.Events(ctx, client.EventsListOptions{})
 	out := make(chan Event)

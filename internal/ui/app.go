@@ -8,10 +8,14 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
+	"github.com/ekosup/d8s/internal/action"
 	"github.com/ekosup/d8s/internal/docker"
 	"github.com/ekosup/d8s/internal/resource"
 	"github.com/ekosup/d8s/internal/store"
 )
+
+// headerHeight is one line each for connection, global keys and view keys.
+const headerHeight = 3
 
 type flashLevel int
 
@@ -34,6 +38,11 @@ type page struct {
 	back func() bool
 	// table is set when the page is a table, which makes it filterable.
 	table *tableView
+	// hints are the bindings worth advertising in the header.
+	hints func() []binding
+	// modal pages take every key: nothing reaches the pages below or the
+	// global bindings, except Esc (close) and Ctrl-C (quit).
+	modal bool
 }
 
 // App is the application shell: header, a stack of pages, and a footer with
@@ -57,6 +66,7 @@ type App struct {
 	stop       func()
 
 	client    docker.Client
+	executor  *action.Executor
 	registry  *resource.Registry
 	watchOpts store.Options
 	// queue runs f on the UI goroutine. Watchers use it to hand over results.
@@ -75,7 +85,12 @@ type App struct {
 type Option func(*App)
 
 // WithClient sets the Docker client resource views read from.
-func WithClient(c docker.Client) Option { return func(a *App) { a.client = c } }
+func WithClient(c docker.Client) Option {
+	return func(a *App) {
+		a.client = c
+		a.executor = action.New(c, false)
+	}
+}
 
 // WithRegistry sets the resources reachable from the application.
 func WithRegistry(r *resource.Registry) Option { return func(a *App) { a.registry = r } }
@@ -108,7 +123,7 @@ func NewApp(info docker.Info, opts ...Option) *App {
 			AddItem(a.crumbs, 0, 1, false).
 			AddItem(a.status, 0, 2, false), true, true)
 	a.root = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(a.header, 2, 0, false).
+		AddItem(a.header, headerHeight, 0, false).
 		AddItem(a.pages, 0, 1, true).
 		AddItem(a.footer, 1, 0, false)
 
@@ -133,6 +148,7 @@ func (a *App) Push(p *page) {
 	a.pages.AddPage(p.id, p.prim, true, true)
 	a.tv.SetFocus(p.prim)
 	a.drawCrumbs()
+	a.drawHeader()
 }
 
 // Pop removes the top page. The root page is never removed.
@@ -145,6 +161,7 @@ func (a *App) Pop() bool {
 	a.stack = a.stack[:last]
 	a.tv.SetFocus(a.stack[last-1].prim)
 	a.drawCrumbs()
+	a.drawHeader()
 	return true
 }
 
@@ -199,13 +216,23 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 		return ev
 	}
 	a.clearFlash()
-	if p := a.top(); p != nil && p.bindings != nil {
+	p := a.top()
+	if p != nil && p.bindings != nil {
 		for _, b := range p.bindings() {
 			if b.matches(ev) {
 				b.do()
 				return nil
 			}
 		}
+	}
+	if p != nil && p.modal {
+		switch ev.Key() {
+		case tcell.KeyEscape:
+			a.Pop()
+		case tcell.KeyCtrlC:
+			a.stop()
+		}
+		return nil
 	}
 	for _, b := range a.globalBindings() {
 		if b.matches(ev) {
@@ -226,11 +253,18 @@ func (a *App) drawHeader() {
 		field("API", a.info.APIVersion),
 	}, "   ")
 
-	hints := make([]string, 0, 8)
-	for _, b := range a.globalBindings() {
-		hints = append(hints, fmt.Sprintf("[steelblue]<%s>[gray] %s", b.label, strings.ToLower(b.desc)))
+	hintLine := func(bs []binding) string {
+		parts := make([]string, 0, len(bs))
+		for _, b := range bs {
+			parts = append(parts, fmt.Sprintf("[steelblue]<%s>[gray] %s", b.label, strings.ToLower(b.desc)))
+		}
+		return " " + strings.Join(parts, "  ")
 	}
-	a.header.SetText(line1 + "\n " + strings.Join(hints, "  "))
+	view := ""
+	if p := a.top(); p != nil && p.hints != nil {
+		view = hintLine(p.hints())
+	}
+	a.header.SetText(line1 + "\n" + hintLine(a.globalBindings()) + "\n" + view)
 }
 
 func (a *App) drawCrumbs() {
