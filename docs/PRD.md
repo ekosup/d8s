@@ -94,7 +94,7 @@ d8s 1.0 mencakup 14 view resource: lima untuk Docker Engine, enam untuk Swarm, d
 | Stack | `:stk` | Nama, jumlah service, replika sehat | Hapus stack | M2 |
 | Secret | `:sec` | Nama, dibuat, diperbarui, dipakai oleh | Inspect metadata, hapus | M2 |
 | Config | `:cfg` | Nama, dibuat, dipakai oleh | Lihat isi, hapus | M2 |
-| Context | `:ctx` | Nama, endpoint, aktif | Pindah konteks | M1 |
+| Context | `:ctx` | Nama, endpoint, mode, produksi, aktif | Pindah konteks; juga `:ctx <nama>` dan tombol `1`–`9` di tabel mana pun | M1 |
 | Events | `:ev` | Waktu, tipe, aksi, aktor | Filter | M1 |
 | Disk usage | `:df` | Jenis, jumlah, ukuran, bisa dibebaskan | Prune terpandu | M1 |
 

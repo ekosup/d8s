@@ -69,16 +69,19 @@ type filterer interface {
 // App is the application shell: header, a stack of pages, and a footer with
 // breadcrumbs and status messages.
 type App struct {
-	tv        *tview.Application
-	root      *tview.Flex
-	header    *tview.Flex // columns: connection info, general keys, view keys
-	pages     *tview.Pages
-	crumbs    *tview.TextView
-	status    *tview.TextView
-	statusBar *tview.Flex
-	footer    *tview.Pages // "status" or "prompt"
-	prompt    *tview.InputField
-	hint      *tview.TextView
+	tv     *tview.Application
+	root   *tview.Flex
+	header *tview.Flex // columns: connection info, contexts when they fit, general keys, view keys
+	// headerWidth is the width the header was last drawn at; 0 before the
+	// first draw. What fits depends on it.
+	headerWidth int
+	pages       *tview.Pages
+	crumbs      *tview.TextView
+	status      *tview.TextView
+	statusBar   *tview.Flex
+	footer      *tview.Pages // "status" or "prompt"
+	prompt      *tview.InputField
+	hint        *tview.TextView
 
 	prompting promptMode
 
@@ -200,6 +203,16 @@ func NewApp(info docker.Info, opts ...Option) *App {
 		AddItem(a.header, headerHeight, 0, false).
 		AddItem(a.pages, 0, 1, true).
 		AddItem(a.footer, 1, 0, false)
+
+	// The header learns its width only when drawn, and is laid out again
+	// when that changes.
+	a.header.SetDrawFunc(func(_ tcell.Screen, x, y, width, height int) (int, int, int, int) {
+		if width != a.headerWidth {
+			a.headerWidth = width
+			a.drawHeader()
+		}
+		return x, y, width, height
+	})
 
 	a.tv.SetRoot(a.root, true)
 	a.tv.SetInputCapture(a.handleKey)
@@ -329,12 +342,21 @@ func (a *App) handleKey(ev *tcell.EventKey) *tcell.EventKey {
 			return nil
 		}
 	}
+	if ev.Key() == tcell.KeyRune && ev.Rune() >= '1' && ev.Rune() <= '9' && a.contextKeysApply() {
+		for _, b := range a.contextBindings() {
+			if b.matches(ev) {
+				b.do()
+				return nil
+			}
+		}
+	}
 	return ev
 }
 
 // drawHeader rebuilds the header: connection info in the first column, the
-// keys that work everywhere in the second, and the keys of the page on top
-// in as many further columns as they need.
+// keys that work everywhere next, and the keys of the page on top in as
+// many further columns as they need. When all of that leaves room, the
+// number keys that switch context go between the info and the keys.
 func (a *App) drawHeader() {
 	a.header.Clear()
 
@@ -372,7 +394,8 @@ func (a *App) drawHeader() {
 		infoWidth = max(infoWidth, labelWidth+1+len([]rune(f[1])))
 	}
 	// The info column takes what it needs, within reason; keys share the rest.
-	a.header.AddItem(headerColumn(sb.String()), min(infoWidth+4, maxInfoWidth), 0, false)
+	infoWidth = min(infoWidth+4, maxInfoWidth)
+	a.header.AddItem(headerColumn(sb.String()), infoWidth, 0, false)
 
 	columns := [][]binding{a.globalBindings()}
 	if p := a.top(); p != nil && p.hints != nil {
@@ -388,10 +411,25 @@ func (a *App) drawHeader() {
 			hints = hints[n:]
 		}
 	}
-	for _, col := range columns {
-		text, width := hintColumn(col)
+	texts := make([]string, len(columns))
+	widths := make([]int, len(columns))
+	needed := infoWidth
+	for i, col := range columns {
+		texts[i], widths[i] = hintColumn(col)
+		needed += widths[i]
+	}
+	ctxTexts, ctxWidths := a.contextColumns()
+	for _, w := range ctxWidths {
+		needed += w
+	}
+	if needed <= a.headerWidth {
+		for i, text := range ctxTexts {
+			a.header.AddItem(headerColumn(text), ctxWidths[i], 0, false)
+		}
+	}
+	for i, text := range texts {
 		// Width is shared in proportion to what each column has to show.
-		a.header.AddItem(headerColumn(text), 0, width, false)
+		a.header.AddItem(headerColumn(text), 0, widths[i], false)
 	}
 }
 

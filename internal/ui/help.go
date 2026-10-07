@@ -64,6 +64,11 @@ func (a *App) showHelp() {
 		keys = append(keys, helpSection{"NAVIGATION", tableNavigation})
 	}
 	keys = append(keys, helpSection{"GENERAL", entriesOf(a.globalBindings())})
+	if top.table != nil {
+		if ctx := a.contextBindings(); len(ctx) > 0 {
+			keys = append(keys, helpSection{groupContexts, entriesOf(ctx)})
+		}
+	}
 	if len(a.hotkeys) > 0 {
 		keys = append(keys, helpSection{groupHotkeys, entriesOf(a.hotkeys)})
 	}

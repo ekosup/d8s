@@ -126,9 +126,10 @@ func (a *App) reservedKeys() map[string]bool {
 	for _, b := range a.globalBindings() {
 		add(b.label)
 	}
-	// Table and text navigation, capabilities, marking, dialogs, pager and logs.
+	// Table and text navigation, capabilities, marking, dialogs, pager and
+	// logs, and the number keys that switch context.
 	add("j", "k", "g", "shift-g", "h", "l", "ctrl-f", "ctrl-b", "enter", "space", "esc",
-		"d", "y", "s", "n", "shift-n", "w", "c", "t", "ctrl-s", "0", "1", "2", "3", "4", "5")
+		"d", "y", "s", "n", "shift-n", "w", "c", "t", "ctrl-s", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
 	if a.registry != nil {
 		for _, res := range a.registry.All() {
 			for _, act := range res.Actions {

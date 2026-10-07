@@ -106,6 +106,7 @@ The header always shows the keys of the view you are in, and `?` shows all of th
 | `Shift` + letter | Sort by a column; again to reverse |
 | `Space` | Mark rows for a bulk action |
 | `Ctrl-d` | Delete, after confirmation |
+| `1`–`9` | Switch to that Docker context, on any table |
 
 **Containers**
 
@@ -161,7 +162,11 @@ docker context create prod --docker host=ssh://user@manager.example.com
 d8s --context prod
 ```
 
-Inside d8s, `:ctx` then `Enter` switches context without leaving.
+Inside d8s there are three ways to switch context without leaving:
+
+- `1` to `9` on any table. The numbers follow the order of the context list and are shown in the header when the terminal is wide enough, and always under `?`.
+- `:ctx prod`, or any unique start of the name (`:ctx pr`); `Tab` completes it.
+- `:ctx`, then `Enter` on a row. That list also shows which contexts are read-only and which are marked as production.
 
 ## Read-only mode
 
@@ -201,7 +206,9 @@ views:
     columns: [NAME, STATE, CPU%, MEM, AGE]   # columns to show, in this order
 ```
 
-A mistake in this file is reported with its line number, and d8s does not start until it is fixed. An alias or hotkey that clashes with a built-in one is ignored and reported at start-up.
+A mistake in this file is reported with its line number, and d8s does not start until it is fixed. An alias or hotkey that clashes with a built-in one is ignored and reported at start-up. So is a name under `contexts` that is not a Docker context: its settings would apply to nothing, and `d8s info` lists it as well.
+
+An alias or hotkey can name a context: `prod: ctx prod` makes `:prod` switch to it.
 
 The sort order of each view is remembered between sessions on its own, in `~/.local/state/d8s/state.yaml`.
 
@@ -217,6 +224,7 @@ Different:
 | --- | --- | --- |
 | `:po`, `:deploy` | `:c`, `:svc` | A pod is roughly a container or a task; a deployment is roughly a service |
 | `:ns` | — | Docker has no namespaces; a stack (`:stk`) is the closest thing |
+| `0`–`9` switch namespace | `1`–`9` switch context | Same place in the header |
 | `e` edit | — | d8s does not edit specs; there is `s` to scale and `i` to change the image |
 | `s` on a deployment = scale | `s` on a service = scale | On a container, `s` is still shell |
 | `Ctrl-a` alias list | `?` | The command list is on the help screen |

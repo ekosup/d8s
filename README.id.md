@@ -106,6 +106,7 @@ Header selalu menampilkan tombol yang berlaku di view yang sedang dibuka, dan `?
 | `Shift` + huruf | Urutkan menurut kolom; tekan lagi untuk membalik |
 | `Space` | Tandai baris untuk aksi massal |
 | `Ctrl-d` | Hapus, dengan konfirmasi |
+| `1`–`9` | Pindah ke Docker context itu, di tabel mana pun |
 
 **Container**
 
@@ -161,7 +162,11 @@ docker context create prod --docker host=ssh://user@manager.example.com
 d8s --context prod
 ```
 
-Di dalam d8s, `:ctx` lalu `Enter` berpindah context tanpa keluar.
+Di dalam d8s ada tiga cara berpindah context tanpa keluar:
+
+- `1` sampai `9` di tabel mana pun. Nomornya mengikuti urutan daftar context, tampil di header bila terminal cukup lebar, dan selalu ada di `?`.
+- `:ctx prod`, atau awalan nama yang unik (`:ctx pr`); `Tab` melengkapinya.
+- `:ctx`, lalu `Enter` pada sebuah baris. Daftar itu juga menunjukkan context mana yang read-only dan mana yang ditandai produksi.
 
 ## Mode read-only
 
@@ -201,7 +206,9 @@ views:
     columns: [NAME, STATE, CPU%, MEM, AGE]   # kolom yang tampil, berurutan
 ```
 
-Kesalahan di berkas ini dilaporkan beserta nomor barisnya, dan d8s tidak mau jalan sampai diperbaiki. Alias atau hotkey yang bentrok dengan bawaan diabaikan dan dilaporkan saat mulai.
+Kesalahan di berkas ini dilaporkan beserta nomor barisnya, dan d8s tidak mau jalan sampai diperbaiki. Alias atau hotkey yang bentrok dengan bawaan diabaikan dan dilaporkan saat mulai. Begitu juga nama di bawah `contexts` yang bukan Docker context: pengaturannya tidak berlaku untuk apa pun, dan `d8s info` ikut menampilkannya.
+
+Alias atau hotkey boleh menyebut context: `prod: ctx prod` membuat `:prod` langsung pindah ke sana.
 
 Urutan sort tiap view diingat sendiri antarsesi di `~/.local/state/d8s/state.yaml`.
 
@@ -217,6 +224,7 @@ Yang berbeda:
 | --- | --- | --- |
 | `:po`, `:deploy` | `:c`, `:svc` | Pod kira-kira container atau task; deployment kira-kira service |
 | `:ns` | — | Docker tidak punya namespace; stack (`:stk`) yang paling dekat |
+| `0`–`9` pindah namespace | `1`–`9` pindah context | Tempatnya sama di header |
 | `e` edit | — | d8s tidak mengedit spesifikasi; ada `s` scale dan `i` ganti image |
 | `s` di deployment = scale | `s` di service = scale | Di container, `s` tetap shell |
 | `Ctrl-a` daftar alias | `?` | Daftar perintah ada di layar bantuan |

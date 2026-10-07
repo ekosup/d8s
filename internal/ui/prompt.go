@@ -123,7 +123,11 @@ func (a *App) promptChanged(text string) {
 			p.filter.SetFilter(text)
 		}
 	case promptCommand:
-		a.hint.SetText(theme.tagMuted + tview.Escape(strings.Join(a.candidates(text), "  ")) + "[-:-:-] ")
+		cands := a.candidates(text)
+		if _, names, ok := a.contextCandidates(text); ok {
+			cands = names
+		}
+		a.hint.SetText(theme.tagMuted + tview.Escape(strings.Join(cands, "  ")) + "[-:-:-] ")
 	}
 }
 
@@ -148,12 +152,12 @@ func (a *App) candidates(prefix string) []string {
 	return out
 }
 
-// runAlias runs a user-defined command: a view or command, optionally
-// followed by "/filter" to apply once the view is open.
+// runAlias runs a user-defined command: anything that can be typed after
+// `:`, optionally followed by " /filter" to apply once the view is open.
 func (a *App) runAlias(target string) {
-	view, rest, _ := strings.Cut(strings.TrimSpace(target), " ")
-	a.runCommand(view)
-	if filter, ok := strings.CutPrefix(strings.TrimSpace(rest), "/"); ok && filter != "" {
+	cmd, filter, _ := strings.Cut(strings.TrimSpace(target), " /")
+	a.runCommand(cmd)
+	if filter != "" {
 		if p := a.top(); p != nil && p.filter != nil {
 			p.filter.SetFilter(filter)
 		}
@@ -163,6 +167,12 @@ func (a *App) runAlias(target string) {
 // completeCommand extends the typed text as far as the candidates agree.
 func (a *App) completeCommand() {
 	cands := a.candidates(a.prompt.GetText())
+	if head, names, ok := a.contextCandidates(a.prompt.GetText()); ok {
+		cands = cands[:0]
+		for _, name := range names {
+			cands = append(cands, head+" "+name)
+		}
+	}
 	if len(cands) == 0 {
 		return
 	}
@@ -190,6 +200,10 @@ func (a *App) runCommand(text string) {
 	}
 	if target, ok := a.aliases[firstWord(cmd)]; ok {
 		a.runAlias(target)
+		return
+	}
+	if _, name, ok := a.contextArgument(cmd); ok && name != "" {
+		a.switchToNamed(name)
 		return
 	}
 	if a.registry == nil {
