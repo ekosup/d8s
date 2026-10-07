@@ -95,6 +95,7 @@ load_token() {
 confirm() {
 	[[ "$assume_yes" == 1 ]] && return
 	local answer
+	[[ -t 0 ]] || die "no terminal to confirm on; nothing was changed. Run it again with YES=1 (or --yes)"
 	read -r -p "publish $1 to GitHub? [y/N] " answer
 	[[ "$answer" == "y" || "$answer" == "Y" ]] || die "cancelled"
 }

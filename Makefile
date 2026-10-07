@@ -78,9 +78,9 @@ release-snapshot: ## build every release artefact into dist/, publishing nothing
 release-status: ## what is unreleased, and which release would come next
 	@scripts/release.sh status
 
-release-next: ## test, bump, tag, push and publish; PART=patch|minor|major|current|X.Y.Z, DRY=1 to rehearse
+release-next: ## test, bump, tag, push and publish; PART=patch|minor|major|current|X.Y.Z, DRY=1 to rehearse, YES=1 to skip the question
 	@test -n "$(PART)" || { echo "say which: make release-next PART=patch|minor|major|current"; exit 1; }
-	@scripts/release.sh $(PART) $(if $(DRY),--dry-run)
+	@scripts/release.sh $(PART) $(if $(DRY),--dry-run) $(if $(YES),--yes)
 
 clean:
 	rm -rf bin/d8s dist
