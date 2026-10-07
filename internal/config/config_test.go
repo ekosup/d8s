@@ -159,3 +159,18 @@ func TestPathResolution(t *testing.T) {
 		t.Fatalf("HOME: %q", got)
 	}
 }
+
+func TestUnknownContexts(t *testing.T) {
+	cfg := Config{Contexts: map[string]ContextPolicy{
+		"scprod":  {Production: true},
+		"portal1": {ReadOnly: true},
+		"Zeta":    {},
+	}}
+	got := cfg.UnknownContexts([]string{"default", "scprod", "portalprod"})
+	if want := []string{"Zeta", "portal1"}; !slices.Equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got := (Config{}).UnknownContexts([]string{"default"}); len(got) != 0 {
+		t.Fatalf("no contexts configured, yet %v", got)
+	}
+}

@@ -88,6 +88,20 @@ func (c Config) Policy(context string, readOnlyFlag bool) ContextPolicy {
 	return p
 }
 
+// UnknownContexts returns the names under `contexts` that are not among
+// the known Docker contexts, sorted. Settings under such a name apply to
+// nothing, which matters most when they were meant to make one read-only.
+func (c Config) UnknownContexts(known []string) []string {
+	var out []string
+	for name := range c.Contexts {
+		if !slices.Contains(known, name) {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
 // Path returns where the settings file is looked for: $D8S_CONFIG, else
 // the XDG config directory.
 func Path(getenv func(string) string) string {

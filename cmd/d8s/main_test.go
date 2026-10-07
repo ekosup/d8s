@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,5 +101,38 @@ func TestInfoReportsABrokenConfig(t *testing.T) {
 	_ = printInfo(&buf, options{command: "info"}, func(k string) string { return env[k] })
 	if !strings.Contains(buf.String(), "neon") || !strings.Contains(buf.String(), "line 1") {
 		t.Fatalf("info does not report the config problem:\n%s", buf.String())
+	}
+}
+
+// dockerContext writes a stored Docker context the way the docker CLI does.
+func dockerContext(t *testing.T, dockerConfig, name, host string) {
+	t.Helper()
+	dir := filepath.Join(dockerConfig, "contexts", "meta", fmt.Sprintf("%x", sha256.Sum256([]byte(name))))
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	meta := fmt.Sprintf(`{"Name":%q,"Metadata":{},"Endpoints":{"docker":{"Host":%q,"SkipTLSVerify":false}}}`, name, host)
+	if err := os.WriteFile(filepath.Join(dir, "meta.json"), []byte(meta), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInfoWarnsAboutSettingsForAContextThatDoesNotExist(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfg := "contexts:\n  portal1:\n    readOnly: true\n  portalprod:\n    production: true\n"
+	if err := os.WriteFile(path, []byte(cfg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dockerContext(t, dir, "portalprod", "ssh://portal1")
+	env := map[string]string{"HOME": dir, "D8S_CONFIG": path, "DOCKER_HOST": "unix://" + filepath.Join(dir, "no.sock"), "DOCKER_CONFIG": dir}
+	var buf bytes.Buffer
+	_ = printInfo(&buf, options{command: "info"}, func(k string) string { return env[k] })
+	out := buf.String()
+	if !strings.Contains(out, `"portal1" is not a Docker context`) {
+		t.Fatalf("no warning for the misnamed context:\n%s", out)
+	}
+	if strings.Contains(out, `"portalprod" is not`) {
+		t.Fatalf("warned about a context that exists:\n%s", out)
 	}
 }

@@ -131,7 +131,7 @@ func printInfo(w io.Writer, o options, getenv func(string) string) error {
 	line("version", version.String())
 
 	path := configPath(o, getenv)
-	_, cfgErr := config.Load(path)
+	cfg, cfgErr := config.Load(path)
 	state := "not found, using defaults"
 	if _, err := os.Stat(path); err == nil {
 		state = "loaded"
@@ -140,6 +140,11 @@ func printInfo(w io.Writer, o options, getenv func(string) string) error {
 		state = "INVALID: " + cfgErr.Error()
 	}
 	line("config", path+" ("+state+")")
+	if cfgErr == nil {
+		for _, w := range contextWarnings(cfg, func() ([]docker.Endpoint, error) { return docker.ListContexts(getenv) }) {
+			line("warning", w)
+		}
+	}
 	line("state", ui.StateDir(getenv))
 
 	ep, err := docker.ResolveEndpoint(env)
@@ -235,13 +240,34 @@ func runUI(o options) error {
 	for name, v := range cfg.Views {
 		views[name] = v.Columns
 	}
-	warnings := append(app.SetCustom(cfg.Aliases, cfg.Hotkeys), app.SetViews(views)...)
+	warnings := contextWarnings(cfg, listContexts)
+	warnings = append(warnings, app.SetCustom(cfg.Aliases, cfg.Hotkeys)...)
+	warnings = append(warnings, app.SetViews(views)...)
 
 	if err := app.ShowHome(); err != nil {
 		return fmt.Errorf("defaultView in the configuration: %w", err)
 	}
 	app.ShowWarnings(warnings)
 	return app.Run()
+}
+
+// contextWarnings names the entries under `contexts` in the settings that
+// match no Docker context. When the contexts cannot be listed there is
+// nothing to compare with, and nothing is reported.
+func contextWarnings(cfg config.Config, list func() ([]docker.Endpoint, error)) []string {
+	eps, err := list()
+	if err != nil {
+		return nil
+	}
+	known := make([]string, len(eps))
+	for i, ep := range eps {
+		known[i] = ep.Context
+	}
+	var out []string
+	for _, name := range cfg.UnknownContexts(known) {
+		out = append(out, fmt.Sprintf("contexts: %q is not a Docker context; its settings apply to nothing", name))
+	}
+	return out
 }
 
 // openLog opens the --log-file, or returns a logger that discards.
