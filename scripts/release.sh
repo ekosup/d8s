@@ -8,7 +8,8 @@
 #                                          already tagged, publish that tag as it stands
 #
 # Add --dry-run to see every step without changing anything, and --yes to
-# skip the confirmation. GITHUB_TOKEN is read from the environment or .env.
+# skip the confirmation. GITHUB_TOKEN is read from the environment or .env,
+# and so is the optional HOMEBREW_TAP_TOKEN for the Homebrew tap.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -90,6 +91,10 @@ load_token() {
 		die "GITHUB_TOKEN is empty; put it in .env as a line GITHUB_TOKEN=<token>"
 	fi
 	export GITHUB_TOKEN
+	if [[ -z "${HOMEBREW_TAP_TOKEN:-}" && -f .env ]]; then
+		HOMEBREW_TAP_TOKEN="$(sed -n 's/^HOMEBREW_TAP_TOKEN=//p' .env | tr -d '[:space:]"'"'"'')"
+	fi
+	export HOMEBREW_TAP_TOKEN="${HOMEBREW_TAP_TOKEN:-}"
 }
 
 confirm() {
