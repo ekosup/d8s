@@ -37,6 +37,12 @@ sudo rpm -i d8s_<versi>_linux_amd64.rpm
 tar -xzf d8s_<versi>_linux_amd64.tar.gz && sudo mv d8s /usr/local/bin/
 ```
 
+Lewat Homebrew, di macOS atau Linux:
+
+```bash
+brew install --cask ekosup/tap/d8s
+```
+
 Atau dari sumber, dengan Go 1.24 ke atas:
 
 ```bash
