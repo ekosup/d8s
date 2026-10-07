@@ -94,7 +94,7 @@ load_token() {
 	if [[ -z "${HOMEBREW_TAP_TOKEN:-}" && -f .env ]]; then
 		HOMEBREW_TAP_TOKEN="$(sed -n 's/^HOMEBREW_TAP_TOKEN=//p' .env | tr -d '[:space:]"'"'"'')"
 	fi
-	export HOMEBREW_TAP_TOKEN="${HOMEBREW_TAP_TOKEN:-}"
+	export HOMEBREW_TAP_TOKEN="${HOMEBREW_TAP_TOKEN:-$GITHUB_TOKEN}"
 }
 
 confirm() {
