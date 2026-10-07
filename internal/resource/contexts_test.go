@@ -44,3 +44,48 @@ func TestContextListError(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestContextRowsShowPolicy(t *testing.T) {
+	eps := []docker.Endpoint{
+		{Context: "default", Host: docker.DefaultHost},
+		{Context: "portalprod", Host: "ssh://portal1"},
+		{Context: "scprod", Host: "ssh://scprod"},
+	}
+	policy := func(name string) ContextPolicy {
+		switch name {
+		case "portalprod":
+			return ContextPolicy{ReadOnly: true, Production: true}
+		case "scprod":
+			return ContextPolicy{Production: true}
+		}
+		return ContextPolicy{}
+	}
+	res := Contexts(func() ([]docker.Endpoint, error) { return eps, nil }, func() string { return "default" }, WithContextPolicy(policy))
+	if got, want := columnNames(res), []string{"NAME", "ENDPOINT", "MODE", "PROD", "ACTIVE"}; !slices.Equal(got, want) {
+		t.Fatalf("columns %v, want %v", got, want)
+	}
+	rows, err := res.List(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"default | unix:///var/run/docker.sock | read-write |  | *",
+		"portalprod | ssh://portal1 | read-only | yes | ",
+		"scprod | ssh://scprod | read-write | yes | ",
+	}
+	if got := cellsOf(rows); !slices.Equal(got, want) {
+		t.Fatalf("got:\n%s", strings.Join(got, "\n"))
+	}
+	// A production context that can still be changed is the one to notice.
+	if rows[2].Tone != ToneWarn || rows[1].Tone != ToneNormal || rows[0].Tone != ToneGood {
+		t.Fatalf("tones: %v %v %v", rows[0].Tone, rows[1].Tone, rows[2].Tone)
+	}
+}
+
+func columnNames(res Resource) []string {
+	names := make([]string, len(res.Columns))
+	for i, c := range res.Columns {
+		names[i] = c.Name
+	}
+	return names
+}

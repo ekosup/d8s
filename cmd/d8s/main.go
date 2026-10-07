@@ -211,7 +211,11 @@ func runUI(o options) error {
 	}
 	var app *ui.App
 	listContexts := func() ([]docker.Endpoint, error) { return docker.ListContexts(os.Getenv) }
-	contexts := resource.Contexts(listContexts, func() string { return app.Context() })
+	contexts := resource.Contexts(listContexts, func() string { return app.Context() },
+		resource.WithContextPolicy(func(name string) resource.ContextPolicy {
+			p := cfg.Policy(name, o.readOnly)
+			return resource.ContextPolicy{ReadOnly: p.ReadOnly, Production: p.Production}
+		}))
 	events := resource.Events(func() []docker.Event { return app.Events() }, time.Local)
 	for _, res := range []resource.Resource{contexts, events} {
 		if err := registry.Register(res); err != nil {
